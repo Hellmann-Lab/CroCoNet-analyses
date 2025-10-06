@@ -1,0 +1,47 @@
+project: hg38
+sequence_files:
+  file1:
+    name: data/neural_differentiation_dataset/FASTQ/all_i1r1_trimmed.fq.gz
+    base_definition:
+    - BC(1-14)
+    - UMI(15-24)
+  file2:
+    name: data/neural_differentiation_dataset/FASTQ/all_r2_trimmed.fq.gz
+    base_definition: cDNA(1-100)
+reference:
+  STAR_index: data/neural_differentiation_dataset/genomes/hg38_STAR_index
+  GTF_file: data/neural_differentiation_dataset/genomes/hg38.gtf
+  additional_STAR_params: --limitOutSJcollapsed 2000000 --limitIObufferSize 300000000 300000000 --limitSjdbInsertNsj 2000000 --alignIntronMax 100000
+  additional_files: data/neural_differentiation_dataset/sample_info/ERCC92.fa
+out_dir:  data/neural_differentiation_dataset/mapping/hg38
+num_threads: 16
+mem_limit: 200
+filter_cutoffs:
+  BC_filter:
+    num_bases: 1
+    phred: 20
+  UMI_filter:
+    num_bases: 1
+    phred: 20
+barcodes:
+  barcode_num: ~
+  barcode_file: data/neural_differentiation_dataset/sample_info/BCs.txt
+  automatic: no
+  BarcodeBinning: 0
+  nReadsperCell: 100
+counting_opts:
+  introns: no
+  downsampling: '0'
+  strand: 1
+  Ham_Dist: 0
+  velocyto: no
+  primaryHit: yes
+  twoPass: yes
+make_stats: yes
+which_Stage: Counting
+Rscript_exec: /opt/bin/Rscript
+STAR_exec: STAR_2.7.11a
+pigz_exec: pigz
+samtools_exec: samtools
+zUMIs_directory: zUMIs/
+read_layout: SE

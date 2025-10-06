@@ -1,0 +1,1613 @@
+---
+title: "getting_module_scores"
+output: html_document
+date: "2024-05-07"
+author:
+- name: Vladyslav Storozhuk
+---
+
+
+
+# 1. Processing peaks with scores
+
+```{r}
+random_modules_in_extended_format <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/07.module_assignment/randomModules/initial4000_min20_ext.rds")
+initial_modules <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/07.module_assignment/initialModules/initial4000.rds")
+prunedModules <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/07.module_assignment/prunedModules/initial4000_min20_ext.rds")
+
+hub_gene_names <- prunedModules %>%
+  pull(hub) %>%
+  unique()
+
+get_all_pruned_and_random_and_initial_genes_from_hubs_extended <- function(hub_gene_names, prunedModules, random_modules_in_extended_format, initial_modules) {
+  for (hub_gene in hub_gene_names) {
+    pruned_module_members <- prunedModules %>%
+      dplyr::filter(hub == hub_gene) %>%
+      pull(target)
+
+    i_module_genes <- data.frame(gene_name = pruned_module_members, module = paste(hub_gene), module_type = "pruned")
+    all_module_genes <- rbind(all_module_genes, i_module_genes)
+
+
+    random_module_members <- random_modules_in_extended_format %>%
+      dplyr::filter(hub == hub_gene) %>%
+      pull(target)
+
+    i_random_module_genes <- data.frame(gene_name = random_module_members, module = paste(hub_gene), module_type = "random")
+    all_module_genes <- rbind(all_module_genes, i_random_module_genes)
+
+
+    initial_module_members <- initial_modules %>%
+      dplyr::filter(hub == hub_gene) %>%
+      pull(genes) %>%
+      unlist()
+
+    i_initial_module_genes <- data.frame(gene_name = initial_module_members, module = paste(hub_gene), module_type = "initial")
+    all_module_genes <- rbind(all_module_genes, i_initial_module_genes)
+  }
+
+  return(all_module_genes)
+}
+
+#initiate empty data frame
+all_module_genes <- data.frame(gene_name = character(), module = character() )
+#fill the data frame with the gene names
+all_module_genes <- get_all_pruned_and_random_and_initial_genes_from_hubs_extended(hub_gene_names, prunedModules, random_modules_in_extended_format, initial_modules) 
+
+fwrite(all_module_genes, "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/all_gene_names_for_pruned_random_initial_modules.rds")
+```
+
+
+now for each gene name I attach its associated peaks and additional info about these peaks
+```{r}
+all_module_genes <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/all_gene_names_for_pruned_random_initial_modules.rds")
+
+
+human_corrected_merged_peak2gene_association <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/associated/human_corrected_merged_peak2gene_association.rds")
+
+gorilla_corrected_merged_peak2gene_association <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/associated/gorilla_corrected_merged_peak2gene_association.rds")
+
+cyno_corrected_merged_peak2gene_association <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/associated/cyno_corrected_merged_peak2gene_association.rds")
+
+
+
+#warning "many-to-many relationship between `x` and `y`" is expected, because gene can appear more than in one module and/or module type
+all_modules_all_peaks_hg38 <- left_join(all_module_genes, human_corrected_merged_peak2gene_association, by = "gene_name")
+#sanity check, nothing is duplicated
+duplicated(all_modules_all_peaks_hg38) %>% table()
+# >FALSE 
+# >13267549
+saveRDS(all_modules_all_peaks_hg38, "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/human_all_peaks_for_pruned_random_initial_modules.rds")
+
+
+
+all_modules_all_peaks_gor6 <- left_join(all_module_genes, gorilla_corrected_merged_peak2gene_association, by = "gene_name")
+duplicated(all_modules_all_peaks_gor6) %>% table()
+
+saveRDS(all_modules_all_peaks_gor6, "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/gorilla_all_peaks_for_pruned_random_initial_modules.rds")
+
+
+
+
+
+
+all_modules_all_peaks_cyno <- left_join(all_module_genes, cyno_corrected_merged_peak2gene_association, by = "gene_name")
+duplicated(all_modules_all_peaks_cyno) %>% table()
+
+saveRDS(all_modules_all_peaks_cyno, "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cyno_all_peaks_for_pruned_random_initial_modules.rds")
+
+```
+
+here i get all motifs for TFs (which are hub genes of the modules).
+these motifs are then used to read cbust files
+only rows of cbust output which contain any of the motifs are read (not the most optimal way, because for now it gets all scores for all hub motifs for each gene. During the later steps it is then filered to only have motif scores which are revalent for each gene, but this first requires attaching TF to the score )
+```{r}
+
+
+motif2TF <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/PWMs/motifs/motif2TF.rds")
+prunedModules <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/07.module_assignment/prunedModules/initial4000_min20_ext.rds")
+
+# get names of the 836 hub genes/call it TF
+hub_gene_names <- prunedModules %>% pull(hub) %>% unique()
+hub_gene_names_df <- data.frame(hub_gene_names)
+names(hub_gene_names_df) <- c("TF")
+
+#because it is concatinated from different sources, names of the same TF can be slightly different
+#so far I only caught capitalization issues such as "Pou5f1" and "POU5F1"
+motif2TF$SYMBOL <- toupper(motif2TF$SYMBOL)
+all_motifs_for_hub_genes <- left_join(hub_gene_names_df, motif2TF, by = c("TF" = "SYMBOL"))
+all_motifs_for_hub_genes <- unique(all_motifs_for_hub_genes)
+
+
+duplicated(all_motifs_for_hub_genes) %>% table()
+#FALSE 
+#1825
+
+#QC
+counts_of_motifs_per_tf <- all_motifs_for_hub_genes %>% group_by(TF) %>% summarize(ncount = length(motif_id)) 
+counts_of_motifs_per_tf %>% filter(ncount > 10)
+ggplot(counts_of_motifs_per_tf, aes(ncount, fill = "#FDAE61"))  + geom_histogram(binwidth = 1, show.legend = FALSE) + labs(y = "count", x = "Number of motifs per TF") + theme_bw() + annotate("label", label = "ELK1", x = 27, y = 30) + annotate("label", label = "ETV2", x = 20, y = 30)  +  annotate("label", label = "JUN", x = 14, y = 30) +  annotate("label", label = "RXRA", x = 12, y = 50) +  annotate("label", label = "JUNB", x = 11, y = 20) 
+
+
+saveRDS(all_motifs_for_hub_genes ,"/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/all_motif_annotations_for_hub_genes.rds")
+
+
+
+
+#get motif ids to read cbust scores
+motif_ids <- all_motifs_for_hub_genes$motif_id
+saveRDS(motif_ids ,"/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+```
+## Gorilla: read cbust
+
+```{r}
+motif_ids <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+setwd("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_out/gor6/combined_motifs.txt/")
+
+# List all files are npcs
+files <- list.files(pattern = "npc")
+
+# Initialize an empty list to store data tables from each file
+motif_data_list <- list()
+
+# Loop over files and read only the lines containing module motifs 
+for (file in files) {
+  # Read the specific lines containing the motif of interest
+   temp_data <- fread(file, select = c("cluster_id_or_motif_name", "extra_info", "cluster_or_motif_score", "strand", "genomic_start__bed", "genomic_end__bed"),
+                     colClasses = c("cluster_id_or_motif_name"="character", "extra_info"="character"))
+  temp_data <- temp_data[temp_data$cluster_id_or_motif_name %in% motif_ids, ]
+  
+  if (nrow(temp_data) > 0) {
+    motif_data_list[[file]] <- temp_data
+  }
+}
+
+# Combine all data tables into one
+motif_data_npc <- rbindlist(motif_data_list, use.names = TRUE)
+
+
+# Save
+fwrite(motif_data_npc, "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/gorilla_npc_all_scores.rds")
+```
+
+
+```{r}
+#do for ipsc
+
+# Set the path to the directory containing the files
+
+setwd("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_out/gor6/combined_motifs.txt/")
+
+# List all files that match the pattern
+files <- list.files(pattern = "ipsc")
+
+# Initialize an empty list to store data tables from each file
+motif_data_list <- list()
+
+# Loop over files and read only the lines containing "POU5F1_motif" if required
+for (file in files) {
+  # Read the specific lines containing the motif of interest
+   temp_data <- fread(file, select = c("cluster_id_or_motif_name", "extra_info", "cluster_or_motif_score","strand", "genomic_start__bed", "genomic_end__bed"),
+                     colClasses = c("cluster_id_or_motif_name"="character", "extra_info"="character"))
+  temp_data <- temp_data[temp_data$cluster_id_or_motif_name %in% motif_ids, ]
+  
+  if (nrow(temp_data) > 0) {
+    motif_data_list[[file]] <- temp_data
+  }
+}
+
+
+# Combine all data tables into one
+motif_data_ipsc <- rbindlist(motif_data_list, use.names = TRUE)
+
+
+# Save or return the result as needed
+fwrite(motif_data_ipsc, "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/gorilla_ipsc_all_scores.rds")
+```
+
+
+## Gorilla: PRUNED module
+
+```{r}
+
+all_motifs_for_hub_genes <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/all_motif_annotations_for_hub_genes.rds")
+
+all_modules_all_peaks <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/gorilla_all_peaks_for_pruned_random_initial_modules.rds")
+
+all_motifs <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+peaks_and_motifs <- left_join(all_modules_all_peaks,all_motifs_for_hub_genes, by = c("module" = "TF") )
+
+all_modules_all_peaks_pruned <- peaks_and_motifs %>% filter(module_type == "pruned")
+all_modules_all_peaks_pruned_npc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.npc))
+all_modules_all_peaks_pruned_ipsc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.ipsc))
+
+
+motif_data_npc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/gorilla_npc_all_scores.rds")
+
+
+npc_scores_pruned <- inner_join(all_modules_all_peaks_pruned_npc, motif_data_npc, by = c("name.npc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+
+
+motif_data_ipsc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/gorilla_ipsc_all_scores.rds")
+ipsc_scores_pruned <- inner_join(all_modules_all_peaks_pruned_ipsc, motif_data_ipsc, by = c("name.ipsc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+ 
+
+
+ipsc_npc_pruned_list <- list(ipsc_scores_pruned,npc_scores_pruned)
+
+ipsc_npc_pruned_bind <- rbindlist(ipsc_npc_pruned_list)
+
+ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>% filter(!duplicated(ipsc_npc_pruned_bind))
+
+
+ipsc_npc_pruned_bind <- GenomicRanges::makeGRangesFromDataFrame(ipsc_npc_pruned_bind, keep.extra.columns = TRUE, strand.field = "strand", ignore.strand = FALSE, seqnames.field = "seqnames", start.field = "genomic_start__bed", end.field = "genomic_end__bed", na.rm = FALSE)
+
+# Add peak start and end
+ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>% dplyr::mutate(peak_start = pmin(start.ipsc, start.npc, na.rm = TRUE), peak_end = pmax(end.ipsc, end.npc, na.rm = TRUE))
+
+# Reduce genomic ranges
+all_modules_all_peaks_reduced <- ipsc_npc_pruned_bind %>%
+  dplyr::group_by(module, module_type, gene_name) %>%
+  plyranges::reduce_ranges_directed(
+    max_motif_score = max(cluster_or_motif_score),
+    peak_start = min(peak_start),
+    peak_end = max(peak_end),
+    element_type = unique(element_type),
+    distance = min(distance),
+    origin = unique(origin)
+  )
+
+# Convert to DataFrame and write output
+all_modules_all_peaks_reduced <- as.data.frame(all_modules_all_peaks_reduced)
+
+all_modules_all_peaks_reduced$element_type <- as.character(all_modules_all_peaks_reduced$element_type)
+all_modules_all_peaks_reduced$element_type %>% table()
+
+
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"enh\", \"prom\")")
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"prom\", \"enh\")")
+
+all_modules_all_peaks_reduced$element_type %>% table()
+
+
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(peak_width = 1+(peak_end - peak_start))
+             
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(coords = paste(peak_start, peak_end, sep = "-" ))
+saveRDS(all_modules_all_peaks_reduced, "/data/share/htp/hack_GRN/vlad/ATAC_Seq/cbust/final_reduced_max_motifs/gorilla_pruned_npc_ipsc_reduced_maxscore.rds")
+
+
+```
+## Gorilla: RANDOM module
+```{r}
+
+all_motifs_for_hub_genes <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/all_motif_annotations_for_hub_genes.rds")
+
+all_modules_all_peaks <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/gorilla_all_peaks_for_pruned_random_initial_modules.rds")
+
+all_motifs <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+peaks_and_motifs <- left_join(all_modules_all_peaks,all_motifs_for_hub_genes, by = c("module" = "TF") )
+
+all_modules_all_peaks_pruned <- peaks_and_motifs %>% filter(module_type == "random")
+all_modules_all_peaks_pruned_npc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.npc))
+all_modules_all_peaks_pruned_ipsc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.ipsc))
+
+
+motif_data_npc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/gorilla_npc_all_scores.rds")
+
+
+npc_scores_pruned <- inner_join(all_modules_all_peaks_pruned_npc, motif_data_npc, by = c("name.npc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+
+
+motif_data_ipsc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/gorilla_ipsc_all_scores.rds")
+ipsc_scores_pruned <- inner_join(all_modules_all_peaks_pruned_ipsc, motif_data_ipsc, by = c("name.ipsc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+ 
+
+
+ipsc_npc_pruned_list <- list(ipsc_scores_pruned,npc_scores_pruned)
+
+ipsc_npc_pruned_bind <- rbindlist(ipsc_npc_pruned_list)
+
+ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>% filter(!duplicated(ipsc_npc_pruned_bind))
+
+
+ipsc_npc_pruned_bind <- GenomicRanges::makeGRangesFromDataFrame(ipsc_npc_pruned_bind, keep.extra.columns = TRUE, strand.field = "strand", ignore.strand = FALSE, seqnames.field = "seqnames", start.field = "genomic_start__bed", end.field = "genomic_end__bed", na.rm = FALSE)
+
+# Add peak start and end
+ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>% dplyr::mutate(peak_start = pmin(start.ipsc, start.npc, na.rm = TRUE), peak_end = pmax(end.ipsc, end.npc, na.rm = TRUE))
+
+# Reduce genomic ranges
+all_modules_all_peaks_reduced <- ipsc_npc_pruned_bind %>%
+  dplyr::group_by(module, module_type, gene_name) %>%
+  plyranges::reduce_ranges_directed(
+    max_motif_score = max(cluster_or_motif_score),
+    peak_start = min(peak_start),
+    peak_end = max(peak_end),
+    element_type = unique(element_type),
+    distance = min(distance),
+    origin = unique(origin)
+  )
+
+# Convert to DataFrame and write output
+all_modules_all_peaks_reduced <- as.data.frame(all_modules_all_peaks_reduced)
+
+all_modules_all_peaks_reduced$element_type <- as.character(all_modules_all_peaks_reduced$element_type)
+all_modules_all_peaks_reduced$element_type %>% table()
+
+
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"enh\", \"prom\")")
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"prom\", \"enh\")")
+
+all_modules_all_peaks_reduced$element_type %>% table()
+
+
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(peak_width = 1+(peak_end - peak_start))
+             
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(coords = paste(peak_start, peak_end, sep = "-" ))
+saveRDS(all_modules_all_peaks_reduced, "/data/share/htp/hack_GRN/vlad/ATAC_Seq/cbust/final_reduced_max_motifs/gorilla_random_npc_ipsc_reduced_maxscore.rds")
+
+
+```
+
+## Gorilla: INITIAL module
+
+```{r}
+all_motifs_for_hub_genes <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/all_motif_annotations_for_hub_genes.rds")
+
+all_modules_all_peaks <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/gorilla_all_peaks_for_pruned_random_initial_modules.rds")
+
+all_motifs <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+peaks_and_motifs <- left_join(all_modules_all_peaks,all_motifs_for_hub_genes, by = c("module" = "TF") )
+
+all_modules_all_peaks_initial <- peaks_and_motifs %>% filter(module_type == "initial")
+all_modules_all_peaks_initial_npc <- all_modules_all_peaks_initial %>% filter(!is.na(name.npc))
+all_modules_all_peaks_initial_ipsc <- all_modules_all_peaks_initial %>% filter(!is.na(name.ipsc))
+
+
+motif_data_npc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/gorilla_npc_all_scores.rds")
+
+npc_scores_initial <- inner_join(all_modules_all_peaks_initial_npc, motif_data_npc, by = c("name.npc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+motif_data_ipsc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/gorilla_ipsc_all_scores.rds")
+
+ipsc_scores_initial <- inner_join(all_modules_all_peaks_initial_ipsc, motif_data_ipsc, by = c("name.ipsc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+
+
+ipsc_npc_initial_list <- list(ipsc_scores_initial,npc_scores_initial)
+
+ipsc_npc_initial_bind <- rbindlist(ipsc_npc_initial_list)
+
+ipsc_npc_initial_bind <- ipsc_npc_initial_bind %>% filter(!duplicated(ipsc_npc_initial_bind))
+
+fwrite(ipsc_npc_initial_bind, "/data/home/vlad/TFBS_divergence/ATAC_Seq/gorilla_initial_modules_paralel/gorilla_initial_full.rds")
+```
+
+```{r}
+
+
+ipsc_npc_initial_bind <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/gorilla_initial_modules_paralel/gorilla_initial_full.rds")
+
+ipsc_npc_initial_bind %>% 
+  mutate(seq = seqnames) %>%
+  group_by(seqnames) %>%
+  group_walk(~ saveRDS(.x, file = paste0("/data/home/vlad/TFBS_divergence/ATAC_Seq/gorilla_initial_modules_paralel/", .y$seqnames, ".rds")))
+```
+
+
+
+
+
+
+```{r}
+path <- "/data/home/vlad/TFBS_divergence/ATAC_Seq/processed_reduced_full/gorilla"
+
+# List all files in the directory
+file_list <- list.files(path, full.names = TRUE)
+
+# Read each file and combine them using rbind
+all_data <- do.call(rbind, lapply(file_list, readRDS))
+
+
+all_modules_all_peaks_reduced <- all_data
+
+all_modules_all_peaks_reduced$element_type <- as.character(all_modules_all_peaks_reduced$element_type)
+
+
+# Recoding 'enh' to 'prom'
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"enh\", \"prom\")")
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"prom\", \"enh\")")
+
+
+
+
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(peak_width = 1+(peak_end - peak_start))
+             
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(coords = paste(peak_start, peak_end, sep = "-" ))
+saveRDS(all_modules_all_peaks_reduced, "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/gorilla_initial_npc_ipsc_reduced_maxscore.rds")
+
+```
+
+
+
+
+## Human: read cbust 
+
+```{r}
+motif_ids <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+setwd("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_out/hg38/combined_motifs.txt/")
+
+# List all files are npcs
+files <- list.files(pattern = "npc")
+
+# Initialize an empty list to store data tables from each file
+motif_data_list <- list()
+
+# Loop over files and read only the lines containing module motifs 
+for (file in files) {
+  # Read the specific lines containing the motif of interest
+   temp_data <- fread(file, select = c("cluster_id_or_motif_name", "extra_info", "cluster_or_motif_score", "strand", "genomic_start__bed", "genomic_end__bed"),
+                     colClasses = c("cluster_id_or_motif_name"="character", "extra_info"="character"))
+  temp_data <- temp_data[temp_data$cluster_id_or_motif_name %in% motif_ids, ]
+  
+  if (nrow(temp_data) > 0) {
+    motif_data_list[[file]] <- temp_data
+  }
+}
+
+# Combine all data tables into one
+motif_data_npc <- rbindlist(motif_data_list, use.names = TRUE)
+
+
+# Save
+fwrite(motif_data_npc, "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/human_npc_all_scores.rds")
+```
+
+
+```{r}
+#do for ipsc
+motif_ids <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+# Set the path to the directory containing the files
+
+setwd("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_out/hg38/combined_motifs.txt/")
+
+# List all files that match the pattern
+files <- list.files(pattern = "ipsc")
+
+# Initialize an empty list to store data tables from each file
+motif_data_list <- list()
+
+# Loop over files and read only the lines containing "POU5F1_motif" if required
+for (file in files) {
+  # Read the specific lines containing the motif of interest
+   temp_data <- fread(file, select = c("cluster_id_or_motif_name", "extra_info", "cluster_or_motif_score","strand", "genomic_start__bed", "genomic_end__bed"),
+                     colClasses = c("cluster_id_or_motif_name"="character", "extra_info"="character"))
+  temp_data <- temp_data[temp_data$cluster_id_or_motif_name %in% motif_ids, ]
+  
+  if (nrow(temp_data) > 0) {
+    motif_data_list[[file]] <- temp_data
+  }
+}
+
+
+# Combine all data tables into one
+motif_data_ipsc <- rbindlist(motif_data_list, use.names = TRUE)
+
+
+# Save or return the result as needed
+fwrite(motif_data_ipsc, "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/human_ipsc_all_scores.rds")
+```
+
+
+
+## Human PRUNED module
+```{r}
+all_motifs_for_hub_genes <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/all_motif_annotations_for_hub_genes.rds")
+
+all_modules_all_peaks <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/human_all_peaks_for_pruned_random_initial_modules.rds")
+
+all_motifs <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+peaks_and_motifs <- left_join(all_modules_all_peaks,all_motifs_for_hub_genes, by = c("module" = "TF") )
+
+all_modules_all_peaks_pruned <- peaks_and_motifs %>% filter(module_type == "pruned")
+all_modules_all_peaks_pruned_npc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.npc))
+all_modules_all_peaks_pruned_ipsc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.ipsc))
+
+
+motif_data_npc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/human_npc_all_scores.rds")
+
+
+npc_scores_pruned <- inner_join(all_modules_all_peaks_pruned_npc, motif_data_npc, by = c("name.npc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+
+
+motif_data_ipsc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/human_ipsc_all_scores.rds")
+ipsc_scores_pruned <- inner_join(all_modules_all_peaks_pruned_ipsc, motif_data_ipsc, by = c("name.ipsc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+ 
+
+
+ipsc_npc_pruned_list <- list(ipsc_scores_pruned,npc_scores_pruned)
+
+ipsc_npc_pruned_bind <- rbindlist(ipsc_npc_pruned_list)
+
+ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>% filter(!duplicated(ipsc_npc_pruned_bind))
+
+
+ipsc_npc_pruned_bind <- GenomicRanges::makeGRangesFromDataFrame(ipsc_npc_pruned_bind, keep.extra.columns = TRUE, strand.field = "strand", ignore.strand = FALSE, seqnames.field = "seqnames", start.field = "genomic_start__bed", end.field = "genomic_end__bed", na.rm = FALSE)
+
+# Add peak start and end
+ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>% dplyr::mutate(peak_start = pmin(start.ipsc, start.npc, na.rm = TRUE), peak_end = pmax(end.ipsc, end.npc, na.rm = TRUE))
+
+# Reduce genomic ranges
+all_modules_all_peaks_reduced <- ipsc_npc_pruned_bind %>%
+  dplyr::group_by(module, module_type, gene_name) %>%
+  plyranges::reduce_ranges_directed(
+    max_motif_score = max(cluster_or_motif_score),
+    peak_start = min(peak_start),
+    peak_end = max(peak_end),
+    element_type = unique(element_type),
+    distance = min(distance),
+    origin = unique(origin)
+  )
+
+# Convert to DataFrame and write output
+all_modules_all_peaks_reduced <- as.data.frame(all_modules_all_peaks_reduced)
+
+all_modules_all_peaks_reduced$element_type <- as.character(all_modules_all_peaks_reduced$element_type)
+all_modules_all_peaks_reduced$element_type %>% table()
+
+
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"enh\", \"prom\")")
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"prom\", \"enh\")")
+
+all_modules_all_peaks_reduced$element_type %>% table()
+
+
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(peak_width = 1+(peak_end - peak_start))
+             
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(coords = paste(peak_start, peak_end, sep = "-" ))
+saveRDS(all_modules_all_peaks_reduced, "/data/share/htp/hack_GRN/vlad/ATAC_Seq/cbust/final_reduced_max_motifs/human_pruned_npc_ipsc_reduced_maxscore.rds")
+
+```
+
+
+## Human RANDOM module
+```{r}
+all_motifs_for_hub_genes <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/all_motif_annotations_for_hub_genes.rds")
+
+all_modules_all_peaks <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/human_all_peaks_for_pruned_random_initial_modules.rds")
+
+all_motifs <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+peaks_and_motifs <- left_join(all_modules_all_peaks,all_motifs_for_hub_genes, by = c("module" = "TF") )
+
+all_modules_all_peaks_pruned <- peaks_and_motifs %>% filter(module_type == "random")
+all_modules_all_peaks_pruned_npc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.npc))
+all_modules_all_peaks_pruned_ipsc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.ipsc))
+
+
+motif_data_npc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/human_npc_all_scores.rds")
+
+
+npc_scores_pruned <- inner_join(all_modules_all_peaks_pruned_npc, motif_data_npc, by = c("name.npc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+
+
+motif_data_ipsc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/human_ipsc_all_scores.rds")
+ipsc_scores_pruned <- inner_join(all_modules_all_peaks_pruned_ipsc, motif_data_ipsc, by = c("name.ipsc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+ 
+
+
+ipsc_npc_pruned_list <- list(ipsc_scores_pruned,npc_scores_pruned)
+
+ipsc_npc_pruned_bind <- rbindlist(ipsc_npc_pruned_list)
+
+ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>% filter(!duplicated(ipsc_npc_pruned_bind))
+
+
+ipsc_npc_pruned_bind <- GenomicRanges::makeGRangesFromDataFrame(ipsc_npc_pruned_bind, keep.extra.columns = TRUE, strand.field = "strand", ignore.strand = FALSE, seqnames.field = "seqnames", start.field = "genomic_start__bed", end.field = "genomic_end__bed", na.rm = FALSE)
+
+# Add peak start and end
+ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>% dplyr::mutate(peak_start = pmin(start.ipsc, start.npc, na.rm = TRUE), peak_end = pmax(end.ipsc, end.npc, na.rm = TRUE))
+
+# Reduce genomic ranges
+all_modules_all_peaks_reduced <- ipsc_npc_pruned_bind %>%
+  dplyr::group_by(module, module_type, gene_name) %>%
+  plyranges::reduce_ranges_directed(
+    max_motif_score = max(cluster_or_motif_score),
+    peak_start = min(peak_start),
+    peak_end = max(peak_end),
+    element_type = unique(element_type),
+    distance = min(distance),
+    origin = unique(origin)
+  )
+
+# Convert to DataFrame and write output
+all_modules_all_peaks_reduced <- as.data.frame(all_modules_all_peaks_reduced)
+
+all_modules_all_peaks_reduced$element_type <- as.character(all_modules_all_peaks_reduced$element_type)
+all_modules_all_peaks_reduced$element_type %>% table()
+
+
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"enh\", \"prom\")")
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"prom\", \"enh\")")
+
+all_modules_all_peaks_reduced$element_type %>% table()
+
+
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(peak_width = 1+(peak_end - peak_start))
+             
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(coords = paste(peak_start, peak_end, sep = "-" ))
+saveRDS(all_modules_all_peaks_reduced, "/data/share/htp/hack_GRN/vlad/ATAC_Seq/cbust/final_reduced_max_motifs/human_random_npc_ipsc_reduced_maxscore.rds")
+
+```
+
+
+
+## Human INITIAL module
+```{r}
+all_motifs_for_hub_genes <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/all_motif_annotations_for_hub_genes.rds")
+
+ 
+all_modules_all_peaks <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/human_all_peaks_for_pruned_random_initial_modules.rds")
+
+all_motifs <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+peaks_and_motifs <- left_join(all_modules_all_peaks,all_motifs_for_hub_genes, by = c("module" = "TF") )
+
+all_modules_all_peaks_initial <- peaks_and_motifs %>% filter(module_type == "initial")
+all_modules_all_peaks_initial_npc <- all_modules_all_peaks_initial %>% filter(!is.na(name.npc))
+all_modules_all_peaks_initial_ipsc <- all_modules_all_peaks_initial %>% filter(!is.na(name.ipsc))
+
+
+motif_data_npc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/human_npc_all_scores.rds")
+
+npc_scores_initial <- inner_join(all_modules_all_peaks_initial_npc, motif_data_npc, by = c("name.npc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+motif_data_ipsc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/human_ipsc_all_scores.rds")
+
+ipsc_scores_initial <- inner_join(all_modules_all_peaks_initial_ipsc, motif_data_ipsc, by = c("name.ipsc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+
+
+ipsc_npc_initial_list <- list(ipsc_scores_initial,npc_scores_initial)
+
+ipsc_npc_initial_bind <- rbindlist(ipsc_npc_initial_list)
+
+ipsc_npc_initial_bind <- ipsc_npc_initial_bind %>% filter(!duplicated(ipsc_npc_initial_bind))
+
+
+#break into chromosomes and process as separate files
+
+ipsc_npc_initial_bind %>% 
+  mutate(seq = seqnames) %>%
+  group_by(seqnames) %>%
+  group_walk(~ saveRDS(.x, file = paste0("/data/home/vlad/TFBS_divergence/ATAC_Seq/human_initial_modules_paralel/", .y$seqnames, ".rds")))
+
+###
+#!/usr/bin/env Rscript
+
+args <- commandArgs(trailingOnly = TRUE)
+file_name <- args[1]
+output_dir <- args[2]
+
+# Load necessary libraries
+library(data.table)
+library(GenomicRanges)
+library(dplyr)
+library(plyranges)
+
+# Read data
+ipsc_npc_initial_bind <- readRDS(file_name)
+
+# Convert to GenomicRanges object
+ipsc_npc_initial_bind <- GenomicRanges::makeGRangesFromDataFrame(ipsc_npc_initial_bind, keep.extra.columns = TRUE, strand.field = "strand", ignore.strand = FALSE, seqnames.field = "seq", start.field = "genomic_start__bed", end.field = "genomic_end__bed", na.rm = FALSE)
+
+# Add peak start and end
+ipsc_npc_initial_bind <- ipsc_npc_initial_bind %>% dplyr::mutate(peak_start = pmin(start.ipsc, start.npc, na.rm = TRUE), peak_end = pmax(end.ipsc, end.npc, na.rm = TRUE))
+
+# Reduce genomic ranges
+all_modules_all_peaks_reduced <- ipsc_npc_initial_bind %>%
+  dplyr::group_by(module, module_type, gene_name) %>%
+  plyranges::reduce_ranges_directed(
+    max_motif_score = max(cluster_or_motif_score),
+    peak_start = min(peak_start),
+    peak_end = max(peak_end),
+    element_type = unique(element_type),
+    distance = min(distance),
+    origin = unique(origin)
+  )
+
+# Convert to DataFrame and write output
+all_modules_all_peaks_reduced <- as.data.frame(all_modules_all_peaks_reduced)
+saveRDS(all_modules_all_peaks_reduced, file.path(output_dir, paste0(basename(file_name), "_reduced.rds")))
+
+
+
+###
+#!/bin/bash
+
+#SBATCH --job-name=human_reduce
+#SBATCH --output=/data/home/vlad/TFBS_divergence/ATAC_Seq/paralel_error/result_%j.out
+#SBATCH --error=/data/home/vlad/TFBS_divergence/ATAC_Seq/paralel_error/error_%j.err
+#SBATCH --cpus-per-task=8
+#SBATCH --partition=normal
+
+# Directory containing your original data files
+DATA_DIR="/data/home/vlad/TFBS_divergence/ATAC_Seq/human_initial_modules_paralel"
+# Directory where the processed files will be saved
+OUTPUT_DIR="/data/home/vlad/TFBS_divergence/ATAC_Seq/processed_paralelized_reduced/human"
+
+for file in ${DATA_DIR}/*.rds; do
+sbatch --wrap="Rscript /data/home/vlad/TFBS_divergence/ATAC_Seq/paralelize_reduce.R $file $OUTPUT_DIR"
+done
+```
+
+
+
+```{r}
+###
+# Set the path to the directory
+path <- "/data/home/vlad/TFBS_divergence/ATAC_Seq/processed_reduced_full/human"
+
+# List all files in the directory
+file_list <- list.files(path, full.names = TRUE)
+
+# Read each file and combine them using rbind
+all_data <- do.call(rbind, lapply(file_list, readRDS))
+```
+
+
+```{r}
+#######
+all_modules_all_peaks_reduced <- all_data
+
+all_modules_all_peaks_reduced$element_type <- as.character(all_modules_all_peaks_reduced$element_type)
+
+
+
+all_modules_all_peaks_reduced$element_type %>% table()
+
+#c("enh", "prom") c("prom", "enh")              enh             prom 
+
+
+# Recoding 'enh' to 'prom'
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"enh\", \"prom\")")
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"prom\", \"enh\")")
+
+all_modules_all_peaks_reduced$element_type %>% table()
+# enh   prom 
+#316533 418093 
+
+
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(peak_width = 1+(peak_end - peak_start))
+             
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(coords = paste(peak_start, peak_end, sep = "-" ))
+saveRDS(all_modules_all_peaks_reduced, "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/human_initial_npc_ipsc_reduced_maxscore.rds")
+
+
+
+
+```
+
+
+
+
+## Cyno: read cbust
+
+
+```{r}
+motif_ids <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+setwd("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_out/cyno/combined_motifs.txt/")
+
+# List all files are npcs
+files <- list.files(pattern = "npc")
+
+# Initialize an empty list to store data tables from each file
+motif_data_list <- list()
+
+# Loop over files and read only the lines containing module motifs 
+for (file in files) {
+  # Read the specific lines containing the motif of interest
+   temp_data <- fread(file, select = c("cluster_id_or_motif_name", "extra_info", "cluster_or_motif_score", "strand", "genomic_start__bed", "genomic_end__bed"),
+                     colClasses = c("cluster_id_or_motif_name"="character", "extra_info"="character"))
+  temp_data <- temp_data[temp_data$cluster_id_or_motif_name %in% motif_ids, ]
+  
+  if (nrow(temp_data) > 0) {
+    motif_data_list[[file]] <- temp_data
+  }
+}
+
+# Combine all data tables into one
+motif_data_npc <- rbindlist(motif_data_list, use.names = TRUE)
+
+
+# Save
+fwrite(motif_data_npc, "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/cyno_npc_all_scores.rds")
+```
+
+
+
+```{r}
+#do for ipsc
+motif_ids <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+# Set the path to the directory containing the files
+
+setwd("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_out/cyno/combined_motifs.txt/")
+
+# List all files that match the pattern
+files <- list.files(pattern = "ipsc")
+
+# Initialize an empty list to store data tables from each file
+motif_data_list <- list()
+
+# Loop over files and read only the lines containing "POU5F1_motif" if required
+for (file in files) {
+  # Read the specific lines containing the motif of interest
+   temp_data <- fread(file, select = c("cluster_id_or_motif_name", "extra_info", "cluster_or_motif_score","strand", "genomic_start__bed", "genomic_end__bed"),
+                     colClasses = c("cluster_id_or_motif_name"="character", "extra_info"="character"))
+  temp_data <- temp_data[temp_data$cluster_id_or_motif_name %in% motif_ids, ]
+  
+  if (nrow(temp_data) > 0) {
+    motif_data_list[[file]] <- temp_data
+  }
+}
+
+
+# Combine all data tables into one
+motif_data_ipsc <- rbindlist(motif_data_list, use.names = TRUE)
+
+
+# Save or return the result as needed
+fwrite(motif_data_ipsc, "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/cyno_ipsc_all_scores.rds")
+```
+
+## Cyno: PRUNED module
+
+```{r}
+
+all_motifs_for_hub_genes <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/all_motif_annotations_for_hub_genes.rds")
+
+all_modules_all_peaks <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cyno_all_peaks_for_pruned_random_initial_modules.rds")
+
+all_motifs <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+peaks_and_motifs <- left_join(all_modules_all_peaks,all_motifs_for_hub_genes, by = c("module" = "TF") )
+
+all_modules_all_peaks_pruned <- peaks_and_motifs %>% filter(module_type == "pruned")
+all_modules_all_peaks_pruned_npc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.npc))
+all_modules_all_peaks_pruned_ipsc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.ipsc))
+
+
+motif_data_npc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/cyno_npc_all_scores.rds")
+npc_scores_pruned <- inner_join(all_modules_all_peaks_pruned_npc, motif_data_npc, by = c("name.npc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+
+
+motif_data_ipsc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/cyno_ipsc_all_scores.rds")
+ipsc_scores_pruned <- inner_join(all_modules_all_peaks_pruned_ipsc, motif_data_ipsc, by = c("name.ipsc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+ 
+
+
+ipsc_npc_pruned_list <- list(ipsc_scores_pruned,npc_scores_pruned)
+
+ipsc_npc_pruned_bind <- rbindlist(ipsc_npc_pruned_list)
+
+ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>% filter(!duplicated(ipsc_npc_pruned_bind))
+
+
+ipsc_npc_pruned_bind <- GenomicRanges::makeGRangesFromDataFrame(ipsc_npc_pruned_bind, keep.extra.columns = TRUE, strand.field = "strand", ignore.strand = FALSE, seqnames.field = "seqnames", start.field = "genomic_start__bed", end.field = "genomic_end__bed", na.rm = FALSE)
+
+# Add peak start and end
+ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>% dplyr::mutate(peak_start = pmin(start.ipsc, start.npc, na.rm = TRUE), peak_end = pmax(end.ipsc, end.npc, na.rm = TRUE))
+
+# Reduce genomic ranges
+all_modules_all_peaks_reduced <- ipsc_npc_pruned_bind %>%
+  dplyr::group_by(module, module_type, gene_name) %>%
+  plyranges::reduce_ranges_directed(
+    max_motif_score = max(cluster_or_motif_score),
+    peak_start = min(peak_start),
+    peak_end = max(peak_end),
+    element_type = unique(element_type),
+    distance = min(distance),
+    origin = unique(origin)
+  )
+
+
+# Convert to DataFrame and write output
+all_modules_all_peaks_reduced <- as.data.frame(all_modules_all_peaks_reduced)
+
+all_modules_all_peaks_reduced$element_type <- as.character(all_modules_all_peaks_reduced$element_type)
+all_modules_all_peaks_reduced$element_type %>% table()
+
+
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"enh\", \"prom\")")
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"prom\", \"enh\")")
+
+all_modules_all_peaks_reduced$element_type %>% table()
+
+
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(peak_width = 1+(peak_end - peak_start))
+             
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(coords = paste(peak_start, peak_end, sep = "-" ))
+saveRDS(all_modules_all_peaks_reduced, "/data/share/htp/hack_GRN/vlad/ATAC_Seq/cbust/final_reduced_max_motifs/cyno_pruned_npc_ipsc_reduced_maxscore.rds")
+
+
+
+```
+
+## Cyno: RANDOM module
+
+```{r}
+
+all_motifs_for_hub_genes <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/all_motif_annotations_for_hub_genes.rds")
+
+all_modules_all_peaks <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cyno_all_peaks_for_pruned_random_initial_modules.rds")
+
+all_motifs <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+peaks_and_motifs <- left_join(all_modules_all_peaks,all_motifs_for_hub_genes, by = c("module" = "TF") )
+
+all_modules_all_peaks_pruned <- peaks_and_motifs %>% filter(module_type == "random")
+all_modules_all_peaks_pruned_npc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.npc))
+all_modules_all_peaks_pruned_ipsc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.ipsc))
+
+
+#motif_data_npc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/cyno_npc_all_scores.rds")
+npc_scores_pruned <- inner_join(all_modules_all_peaks_pruned_npc, motif_data_npc, by = c("name.npc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+
+
+#motif_data_ipsc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/cyno_ipsc_all_scores.rds")
+ipsc_scores_pruned <- inner_join(all_modules_all_peaks_pruned_ipsc, motif_data_ipsc, by = c("name.ipsc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+ 
+
+
+ipsc_npc_pruned_list <- list(ipsc_scores_pruned,npc_scores_pruned)
+
+ipsc_npc_pruned_bind <- rbindlist(ipsc_npc_pruned_list)
+
+ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>% filter(!duplicated(ipsc_npc_pruned_bind))
+
+
+ipsc_npc_pruned_bind <- GenomicRanges::makeGRangesFromDataFrame(ipsc_npc_pruned_bind, keep.extra.columns = TRUE, strand.field = "strand", ignore.strand = FALSE, seqnames.field = "seqnames", start.field = "genomic_start__bed", end.field = "genomic_end__bed", na.rm = FALSE)
+
+# Add peak start and end
+ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>% dplyr::mutate(peak_start = pmin(start.ipsc, start.npc, na.rm = TRUE), peak_end = pmax(end.ipsc, end.npc, na.rm = TRUE))
+
+# Reduce genomic ranges
+all_modules_all_peaks_reduced <- ipsc_npc_pruned_bind %>%
+  dplyr::group_by(module, module_type, gene_name) %>%
+  plyranges::reduce_ranges_directed(
+    max_motif_score = max(cluster_or_motif_score),
+    peak_start = min(peak_start),
+    peak_end = max(peak_end),
+    element_type = unique(element_type),
+    distance = min(distance),
+    origin = unique(origin)
+  )
+
+
+# Convert to DataFrame and write output
+all_modules_all_peaks_reduced <- as.data.frame(all_modules_all_peaks_reduced)
+
+all_modules_all_peaks_reduced$element_type <- as.character(all_modules_all_peaks_reduced$element_type)
+all_modules_all_peaks_reduced$element_type %>% table()
+
+
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"enh\", \"prom\")")
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"prom\", \"enh\")")
+
+all_modules_all_peaks_reduced$element_type %>% table()
+
+
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(peak_width = 1+(peak_end - peak_start))
+             
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(coords = paste(peak_start, peak_end, sep = "-" ))
+saveRDS(all_modules_all_peaks_reduced, "/data/share/htp/hack_GRN/vlad/ATAC_Seq/cbust/final_reduced_max_motifs/cyno_random_npc_ipsc_reduced_maxscore.rds")
+
+
+
+```
+
+## Cyno: INITIAL module
+
+```{r}
+all_motifs_for_hub_genes <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/all_motif_annotations_for_hub_genes.rds")
+
+all_modules_all_peaks <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cyno_all_peaks_for_pruned_random_initial_modules.rds")
+
+all_motifs <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+
+peaks_and_motifs <- left_join(all_modules_all_peaks,all_motifs_for_hub_genes, by = c("module" = "TF") )
+
+all_modules_all_peaks_initial <- peaks_and_motifs %>% filter(module_type == "initial")
+all_modules_all_peaks_initial_npc <- all_modules_all_peaks_initial %>% filter(!is.na(name.npc))
+all_modules_all_peaks_initial_ipsc <- all_modules_all_peaks_initial %>% filter(!is.na(name.ipsc))
+
+
+motif_data_npc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/cyno_npc_all_scores.rds")
+
+npc_scores_initial <- inner_join(all_modules_all_peaks_initial_npc, motif_data_npc, by = c("name.npc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+motif_data_ipsc <- fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/cyno_ipsc_all_scores.rds")
+
+ipsc_scores_initial <- inner_join(all_modules_all_peaks_initial_ipsc, motif_data_ipsc, by = c("name.ipsc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+
+
+ipsc_npc_initial_list <- list(ipsc_scores_initial,npc_scores_initial)
+
+ipsc_npc_initial_bind <- rbindlist(ipsc_npc_initial_list)
+
+ipsc_npc_initial_bind <- ipsc_npc_initial_bind %>% filter(!duplicated(ipsc_npc_initial_bind))
+
+
+#break into chromosomes and process as separate files
+
+ipsc_npc_initial_bind %>% 
+  mutate(seq = seqnames) %>%
+  group_by(seqnames) %>%
+  group_walk(~ saveRDS(.x, file = paste0("/data/home/vlad/TFBS_divergence/ATAC_Seq/cyno_initial_modules_paralel/", .y$seqnames, ".rds")))
+```
+
+
+```{r}
+###
+#!/usr/bin/env Rscript
+
+args <- commandArgs(trailingOnly = TRUE)
+file_name <- args[1]
+output_dir <- args[2]
+
+# Load necessary libraries
+library(data.table)
+library(GenomicRanges)
+library(dplyr)
+library(plyranges)
+
+# Read data
+ipsc_npc_initial_bind <- readRDS(file_name)
+
+# Convert to GenomicRanges object
+ipsc_npc_initial_bind <- GenomicRanges::makeGRangesFromDataFrame(ipsc_npc_initial_bind, keep.extra.columns = TRUE, strand.field = "strand", ignore.strand = FALSE, seqnames.field = "seq", start.field = "genomic_start__bed", end.field = "genomic_end__bed", na.rm = FALSE)
+
+# Add peak start and end
+ipsc_npc_initial_bind <- ipsc_npc_initial_bind %>% dplyr::mutate(peak_start = pmin(start.ipsc, start.npc, na.rm = TRUE), peak_end = pmax(end.ipsc, end.npc, na.rm = TRUE))
+
+# Reduce genomic ranges
+all_modules_all_peaks_reduced <- ipsc_npc_initial_bind %>%
+  dplyr::group_by(module, module_type, gene_name) %>%
+  plyranges::reduce_ranges_directed(
+    max_motif_score = max(cluster_or_motif_score),
+    peak_start = min(peak_start),
+    peak_end = max(peak_end),
+    element_type = unique(element_type),
+    distance = min(distance),
+    origin = unique(origin)
+  )
+
+# Convert to DataFrame and write output
+all_modules_all_peaks_reduced <- as.data.frame(all_modules_all_peaks_reduced)
+saveRDS(all_modules_all_peaks_reduced, file.path(output_dir, paste0(basename(file_name), "_reduced.rds")))
+
+
+
+###
+#!/bin/bash
+
+#SBATCH --job-name=cyno_reduce
+#SBATCH --output=/data/home/vlad/TFBS_divergence/ATAC_Seq/paralel_error/result_%j.out
+#SBATCH --error=/data/home/vlad/TFBS_divergence/ATAC_Seq/paralel_error/error_%j.err
+#SBATCH --cpus-per-task=8
+#SBATCH --partition=normal
+
+# Directory containing your original data files
+DATA_DIR="/data/home/vlad/TFBS_divergence/ATAC_Seq/cyno_initial_modules_paralel"
+# Directory where the processed files will be saved
+OUTPUT_DIR="/data/home/vlad/TFBS_divergence/ATAC_Seq/processed_reduced_full/cyno"
+
+for file in ${DATA_DIR}/*.rds; do
+sbatch --wrap="Rscript /data/home/vlad/TFBS_divergence/ATAC_Seq/paralelize_reduce.R $file $OUTPUT_DIR"
+done
+```
+
+```{r}
+# Set the path to the directory
+path <- "/data/home/vlad/TFBS_divergence/ATAC_Seq/processed_reduced_full/cyno"
+
+# List all files in the directory
+file_list <- list.files(path, full.names = TRUE)
+
+# Read each file and combine them using rbind
+all_data <- do.call(rbind, lapply(file_list, readRDS))
+
+
+all_modules_all_peaks_reduced <- all_data
+
+all_modules_all_peaks_reduced$element_type <- as.character(all_modules_all_peaks_reduced$element_type)
+
+
+# Recoding 'enh' to 'prom'
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"enh\", \"prom\")")
+all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"prom\", \"enh\")")
+
+
+
+
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(peak_width = 1+(peak_end - peak_start))
+             
+all_modules_all_peaks_reduced <- all_modules_all_peaks_reduced %>% mutate(coords = paste(peak_start, peak_end, sep = "-" ))
+saveRDS(all_modules_all_peaks_reduced, "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/cyno_initial_npc_ipsc_reduced_maxscore.rds")
+
+```
+
+
+# 2. Processing peaks without scores
+
+## Pruned/Random modules
+
+```{r eval= FALSE}
+process_peak_with_motifs <- function(species_name, module_type_name) {
+  # Load df with cols: TF,motif_id,Evidence
+  all_motifs_for_hub_genes <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/all_motif_annotations_for_hub_genes.rds")
+
+  # Load previously created gene association containing module and module type depending on a specie
+  all_modules_all_peaks_file_path <- paste0("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/", species_name, "_all_peaks_for_pruned_random_initial_modules.rds")
+  all_modules_all_peaks <- readRDS(all_modules_all_peaks_file_path)
+
+  # Add motif_id to the gene-peak association based on TF (hub gene in each module = TF). Now Each module has names of motifs of its hub
+  peaks_and_motifs <- left_join(all_modules_all_peaks, all_motifs_for_hub_genes, by = c("module" = "TF"))
+
+
+  # filter for only pruned/random; separately npcs and ipcs
+  all_modules_all_peaks_pruned <- peaks_and_motifs %>% filter(module_type == module_type_name)
+  all_modules_all_peaks_pruned_npc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.npc))
+  all_modules_all_peaks_pruned_ipsc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.ipsc))
+
+  # load cbust scores
+  npc_motifs_file_path <- paste0("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/", species_name, "_npc_all_scores.rds")
+  ipsc_motifs_file_path <- paste0("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/", species_name, "_ipsc_all_scores.rds")
+  motif_data_npc <- fread(npc_motifs_file_path)
+  motif_data_ipsc <- fread(ipsc_motifs_file_path)
+
+
+  # process NPC
+
+  # Find per peak motifs with no scores
+  npc_scores_pruned_inner <- inner_join(all_modules_all_peaks_pruned_npc, motif_data_npc, by = c("name.npc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+  npc_scores_pruned_left <- left_join(all_modules_all_peaks_pruned_npc, motif_data_npc, by = c("name.npc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+  # These are NPC motifs per peak with no scores
+  diff_npc <- anti_join(npc_scores_pruned_left, npc_scores_pruned_inner)
+
+
+  # Now from this, we can go to finding out what peaks have no scored motif
+
+  # PEAK WITH NO SCORED MOTIF HAS NAMES OF ALL ITS POTENTIAL MOTIFS IN "diff" df.
+  # (if peak has at least 1 missing motif from list of all , this motif was found within the peak).
+
+  # We can group per peak, and create a column with collapsed motif names (using diff df) ordered alphabetically
+  # Then we create same structure with all_motifs_for_hub_genes: TF with all motifs ordered alphabetically
+  # Finally, we filter for peaks which have exact match with the all potential motifs (this would mean that this peak had no scored motif ).
+  # This gives peaks with not a single scored motif
+
+  ordered_motifs <- all_motifs_for_hub_genes %>%
+    group_by(TF) %>%
+    summarize(all_motifs = paste(sort(unique(motif_id)), collapse = ","))
+  ordered_npc <- diff_npc %>%
+    group_by(module_type, module, gene_name, name.npc) %>%
+    summarize(all_motifs = paste(sort(unique(motif_id)), collapse = ","))
+
+  # peak names which have no scored motif
+  filtered_npc <- ordered_npc %>%
+    dplyr::filter(all_motifs %in% ordered_motifs$all_motifs)
+
+  # filter for full data of these "0 score" peaks
+  missing_npc <-
+    inner_join(diff_npc, filtered_npc, by = c("module_type", "module", "gene_name", "name.npc")) %>%
+    dplyr::select(-"motif_id", -"Evidence") %>%
+    dplyr::distinct(.keep_all = TRUE)
+
+
+  # REPEAT SAME STEPS FOR IPSC
+  ipsc_scores_pruned_inner <- inner_join(all_modules_all_peaks_pruned_ipsc, motif_data_ipsc, by = c("name.ipsc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+  ipsc_scores_pruned_left <- left_join(all_modules_all_peaks_pruned_ipsc, motif_data_ipsc, by = c("name.ipsc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+  diff_ipsc <- anti_join(ipsc_scores_pruned_left, ipsc_scores_pruned_inner)
+
+
+  ordered_ipsc <- diff_ipsc %>%
+    group_by(module_type, module, gene_name, name.ipsc) %>%
+    summarize(all_motifs = paste(sort(unique(motif_id)), collapse = ","))
+
+  filtered_ipsc <- ordered_ipsc %>%
+    dplyr::filter(all_motifs %in% ordered_motifs$all_motifs)
+
+  missing_ipsc <-
+    inner_join(diff_ipsc, filtered_ipsc, by = c("module_type", "module", "gene_name", "name.ipsc")) %>%
+    dplyr::select(-"motif_id", -"Evidence") %>%
+    dplyr::distinct(.keep_all = TRUE)
+
+  # NEXT PROCESS THE SAME WAY AS PEAKS WITH SCORED MOTIFS (but now reducing ranges are peaks, not motifs)
+
+  ipsc_npc_pruned_list <- list(missing_ipsc, missing_npc)
+
+  ipsc_npc_pruned_bind <- rbindlist(ipsc_npc_pruned_list)
+
+  ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>% filter(!duplicated(ipsc_npc_pruned_bind))
+
+  # get start, end for each row (each peak); before this, start and end are separate columns for ipsc and npc
+  # we don't have strand, so we get rid of it
+
+  ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>%
+    dplyr::mutate(peak_start = pmin(start.ipsc, start.npc, na.rm = TRUE), peak_end = pmax(end.ipsc, end.npc, na.rm = TRUE)) %>%
+    dplyr::select(-"strand")
+
+  # create GR object using peak start and end, reduce, set score to 0 (those were looked at, so these are not NA)
+  ipsc_npc_pruned_bind <- GenomicRanges::makeGRangesFromDataFrame(ipsc_npc_pruned_bind, keep.extra.columns = TRUE, ignore.strand = T, seqnames.field = "seqnames", start.field = "peak_start", end.field = "peak_end", na.rm = FALSE)
+
+  all_modules_all_peaks_reduced <- ipsc_npc_pruned_bind %>%
+    dplyr::group_by(module, module_type, gene_name) %>%
+    plyranges::reduce_ranges(
+      max_motif_score = 0,
+      element_type = unique(element_type),
+      distance = min(distance),
+      origin = unique(origin)
+    )
+
+  all_modules_all_peaks_reduced <- as.data.frame(all_modules_all_peaks_reduced)
+
+  all_modules_all_peaks_reduced$element_type <- as.character(all_modules_all_peaks_reduced$element_type)
+  all_modules_all_peaks_reduced$element_type %>% table()
+  all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"enh\", \"prom\")")
+  all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"prom\", \"enh\")")
+  all_modules_all_peaks_reduced$element_type %>% table()
+
+  # process column names and structure so that it matches peaks with scores (to rbind them later)
+  colnames(all_modules_all_peaks_reduced)
+
+  all_modules_all_peaks_reduced %<>%
+    dplyr::mutate(
+      coords = paste(start, end, sep = "-"),
+      species = species_name
+    )
+
+
+  all_modules_all_peaks_reduced %<>%
+    dplyr::mutate(
+      peak_start = start,
+      peak_end = end,
+      peak_width = width
+    ) %>%
+    dplyr::select(-start, -end, -width) %>%
+    mutate(
+      start = NA,
+      end = NA,
+      width = NA,
+      strand = NA
+    )
+
+  all_modules_all_peaks_reduced_for_save <- all_modules_all_peaks_reduced %>%
+    dplyr::select(
+      seqnames, start, end, width, strand, module, module_type,
+      gene_name, max_motif_score, peak_start, peak_end,
+      element_type, distance, origin, peak_width, coords, species
+    )
+
+  file_name <- paste("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/",
+    species_name, "_", module_type_name, "_npc_ipsc_zero_score.rds",
+    sep = ""
+  )
+
+
+  saveRDS(all_modules_all_peaks_reduced_for_save, file_name)
+}
+```
+
+```{r eval= FALSE}
+process_peak_with_motifs(species_name = "human", module_type_name = "pruned")
+process_peak_with_motifs(species_name = "human", module_type_name = "random")
+
+
+process_peak_with_motifs(species_name = "gorilla", module_type_name = "pruned")
+process_peak_with_motifs(species_name = "gorilla", module_type_name = "random")
+
+
+process_peak_with_motifs(species_name = "cyno", module_type_name = "pruned")
+process_peak_with_motifs(species_name = "cyno", module_type_name = "random")
+
+```
+
+## Initial Modules
+
+Everything is the same as above, but reducing ranges is done on each chromosome separately, because of size (with SLURM)
+```{r eval= FALSE}
+process_peak_from_initial_module_with_motifs <- function(species_name, module_type_name) {
+  all_motifs_for_hub_genes <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/all_motif_annotations_for_hub_genes.rds")
+
+  all_modules_all_peaks_file_path <- paste0("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/", species_name, "_all_peaks_for_pruned_random_initial_modules.rds")
+
+  all_modules_all_peaks <- readRDS(all_modules_all_peaks_file_path)
+
+  all_motifs <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/motif_ids_for_all_modules.rds")
+  peaks_and_motifs <- left_join(all_modules_all_peaks, all_motifs_for_hub_genes, by = c("module" = "TF"))
+
+  all_modules_all_peaks_pruned <- peaks_and_motifs %>% filter(module_type == module_type_name)
+  all_modules_all_peaks_pruned_npc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.npc))
+  all_modules_all_peaks_pruned_ipsc <- all_modules_all_peaks_pruned %>% filter(!is.na(name.ipsc))
+
+  npc_motifs_file_path <- paste0("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/", species_name, "_npc_all_scores.rds")
+
+  ipsc_motifs_file_path <- paste0("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/cbust_attaching scores/", species_name, "_ipsc_all_scores.rds")
+
+  motif_data_npc <- fread(npc_motifs_file_path)
+  motif_data_ipsc <- fread(ipsc_motifs_file_path)
+
+
+  # NPC
+  npc_scores_pruned_inner <- inner_join(all_modules_all_peaks_pruned_npc, motif_data_npc, by = c("name.npc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+  npc_scores_pruned_left <- left_join(all_modules_all_peaks_pruned_npc, motif_data_npc, by = c("name.npc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+  diff_npc <- anti_join(npc_scores_pruned_left, npc_scores_pruned_inner)
+
+  ordered_motifs <- all_motifs_for_hub_genes %>%
+    group_by(TF) %>%
+    summarize(all_motifs = paste(sort(unique(motif_id)), collapse = ","))
+  ordered_npc <- diff_npc %>%
+    group_by(module_type, module, gene_name, name.npc) %>%
+    summarize(all_motifs = paste(sort(unique(motif_id)), collapse = ","))
+
+  filtered_npc <- ordered_npc %>%
+    dplyr::filter(all_motifs %in% ordered_motifs$all_motifs)
+
+  missing_npc <-
+    inner_join(diff_npc, filtered_npc, by = c("module_type", "module", "gene_name", "name.npc")) %>%
+    dplyr::select(-"motif_id", -"Evidence") %>%
+    dplyr::distinct(.keep_all = TRUE)
+
+
+  ##### IPSC
+  ipsc_scores_pruned_inner <- inner_join(all_modules_all_peaks_pruned_ipsc, motif_data_ipsc, by = c("name.ipsc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+  ipsc_scores_pruned_left <- left_join(all_modules_all_peaks_pruned_ipsc, motif_data_ipsc, by = c("name.ipsc" = "extra_info", "motif_id" = "cluster_id_or_motif_name"))
+
+  diff_ipsc <- anti_join(ipsc_scores_pruned_left, ipsc_scores_pruned_inner)
+
+
+  ordered_ipsc <- diff_ipsc %>%
+    group_by(module_type, module, gene_name, name.ipsc) %>%
+    summarize(all_motifs = paste(sort(unique(motif_id)), collapse = ","))
+
+  filtered_ipsc <- ordered_ipsc %>%
+    dplyr::filter(all_motifs %in% ordered_motifs$all_motifs)
+
+  missing_ipsc <-
+    inner_join(diff_ipsc, filtered_ipsc, by = c("module_type", "module", "gene_name", "name.ipsc")) %>%
+    dplyr::select(-"motif_id", -"Evidence") %>%
+    dplyr::distinct(.keep_all = TRUE)
+
+  ipsc_npc_pruned_list <- list(missing_ipsc, missing_npc)
+
+  ipsc_npc_pruned_bind <- rbindlist(ipsc_npc_pruned_list)
+
+  ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>% filter(!duplicated(ipsc_npc_pruned_bind))
+
+  ipsc_npc_pruned_bind <- ipsc_npc_pruned_bind %>%
+    dplyr::mutate(peak_start = pmin(start.ipsc, start.npc, na.rm = TRUE), peak_end = pmax(end.ipsc, end.npc, na.rm = TRUE)) %>%
+    dplyr::select(-"strand")
+
+
+  # break into chromosomes and process as separate files
+
+  file_path_to_save_the_seq <- paste("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/processed_not_reduced/", species_name, "/", sep = "")
+
+
+  ipsc_npc_pruned_bind %>%
+    mutate(seq = seqnames) %>%
+    group_by(seqnames) %>%
+    group_walk(~ saveRDS(.x, file = paste0(file_path_to_save_the_seq, .y$seqnames, ".rds")))
+}
+
+```
+
+
+This part produces rds files with peaks (each file is a chromosome). The files are saved to:
+
+file_path_to_save_the_seq <- paste("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/processed_not_reduced/", species_name, "/", sep = "")
+
+```{r eval= FALSE}
+process_peak_from_initial_module_with_motifs(species_name = "human", module_type_name = "initial")
+
+process_peak_from_initial_module_with_motifs(species_name = "cyno", module_type_name = "initial")
+
+process_peak_from_initial_module_with_motifs(species_name = "gorilla", module_type_name = "initial")
+
+```
+
+
+create r script
+```{r eval= FALSE}
+#!/usr/bin/env Rscript
+args <- commandArgs(trailingOnly = TRUE)
+file_name <- args[1]
+output_dir <- args[2]
+
+# Read data
+ipsc_npc_initial_bind <- readRDS(file_name)
+ipsc_npc_initial_bind <- GenomicRanges::makeGRangesFromDataFrame(ipsc_npc_initial_bind, keep.extra.columns = TRUE, ignore.strand = T, seqnames.field = "seq", start.field = "peak_start", end.field = "peak_end", na.rm = FALSE)
+
+all_modules_all_peaks_reduced <- ipsc_npc_initial_bind %>%
+  dplyr::group_by(module, module_type, gene_name) %>%
+  plyranges::reduce_ranges(
+    max_motif_score = 0,
+    element_type = unique(element_type),
+    distance = min(distance),
+    origin = unique(origin)
+  )
+
+# Convert to DataFrame and write output
+all_modules_all_peaks_reduced <- as.data.frame(all_modules_all_peaks_reduced)
+saveRDS(all_modules_all_peaks_reduced, file.path(output_dir, paste0(basename(file_name), "_reduced.rds")))
+
+
+
+# TEST = breaks down when non canonical chromosome is passed on to reduce ranges.
+ipsc_npc_initial_bind <- readRDS("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/processed_not_reduced/cyno/chr18.rds")
+ipsc_npc_initial_bind <- GenomicRanges::makeGRangesFromDataFrame(ipsc_npc_initial_bind, keep.extra.columns = TRUE, ignore.strand = T, seqnames.field = "seq", start.field = "peak_start", end.field = "peak_end", na.rm = FALSE)
+
+all_modules_all_peaks_reduced <- ipsc_npc_initial_bind %>%
+  dplyr::group_by(module, module_type, gene_name) %>%
+  plyranges::reduce_ranges(
+    max_motif_score = 0,
+    element_type = unique(element_type),
+    distance = min(distance),
+    origin = unique(origin)
+  )
+```
+
+create bash script
+```{bash eval= FALSE}
+#!/bin/bash
+
+#SBATCH --job-name=cyno_reduce
+#SBATCH --output=/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/errors_%j.out
+#SBATCH --error=/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/errors_%j.err
+#SBATCH --cpus-per-task=8
+#SBATCH --partition=normal
+
+# Directory containing your original data files
+DATA_DIR="/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/processed_not_reduced/cyno"
+# Directory where the processed files will be saved
+OUTPUT_DIR="/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/processed_reduced/cyno"
+
+for file in ${DATA_DIR}/*.rds; do
+sbatch --wrap="Rscript /data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/paralel_process_peaks_with_no_motifs_from_initial_module.R $file $OUTPUT_DIR"
+done
+```
+
+Submit bash scripts, only canonical chromosomes are processed (everything which does not start with chr causes error in reduce_ranges, but it is not useful for anything anyways)
+
+Function to read reduced files, combine back into a signle data frame and continue as for pruned/random
+```{r eval= FALSE}
+finish_processing_initial_modules <- function(path_to_reduced_chr, species_name, module_type_name) {
+  # List all files in the directory
+  file_list <- list.files(path_to_reduced_chr, full.names = TRUE)
+
+  # Read each file and combine them using rbind
+  all_data <- do.call(rbind, lapply(file_list, readRDS))
+
+  all_modules_all_peaks_reduced <- as.data.frame(all_data)
+
+  all_modules_all_peaks_reduced$element_type <- as.character(all_modules_all_peaks_reduced$element_type)
+  all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"enh\", \"prom\")")
+  all_modules_all_peaks_reduced$element_type <- forcats::fct_recode(all_modules_all_peaks_reduced$element_type, prom = "c(\"prom\", \"enh\")")
+
+  all_modules_all_peaks_reduced %<>%
+    dplyr::mutate(
+      coords = paste(start, end, sep = "-"),
+      species = species_name
+    )
+
+
+  all_modules_all_peaks_reduced %<>%
+    dplyr::mutate(
+      peak_start = start,
+      peak_end = end,
+      peak_width = width
+    ) %>%
+    dplyr::select(-start, -end, -width) %>%
+    mutate(
+      start = NA,
+      end = NA,
+      width = NA,
+      strand = NA
+    )
+
+  all_modules_all_peaks_reduced_for_save <- all_modules_all_peaks_reduced %>%
+    dplyr::select(
+      seqnames, start, end, width, strand, module, module_type,
+      gene_name, max_motif_score, peak_start, peak_end,
+      element_type, distance, origin, peak_width, coords, species
+    )
+
+
+  file_name <- paste("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/",
+    species_name, "_", module_type_name, "_npc_ipsc_zero_score.rds",
+    sep = ""
+  )
+
+  saveRDS(all_modules_all_peaks_reduced_for_save, file_name)
+}
+```
+
+
+```{r eval= FALSE}
+finish_processing_initial_modules(path_to_reduced_chr = "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/processed_reduced/human" , species_name = "human", module_type_name = "initial")
+
+finish_processing_initial_modules(path_to_reduced_chr = "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/processed_reduced/cyno" , species_name = "cyno", module_type_name = "initial")
+
+finish_processing_initial_modules(path_to_reduced_chr = "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/processed_reduced/gorilla" , species_name = "gorilla", module_type_name = "initial")
+
+```
+
+## Resulting peaks with no scores
+
+```{r echo = FALSE}
+reduced_no_score_files <- data.frame(
+  species = rep(c("Cyno", "Human", "Gorilla"), each = 3),
+  module_type = rep(c("Pruned", "Random", "Initial"), times = 3),
+  file = c(
+    "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/cyno_pruned_npc_ipsc_zero_score.rds",
+    "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/cyno_random_npc_ipsc_zero_score.rds",
+    "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/cyno_initial_npc_ipsc_zero_score.rds",
+    "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/human_pruned_npc_ipsc_zero_score.rds",
+    "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/human_random_npc_ipsc_zero_score.rds",
+    "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/human_initial_npc_ipsc_zero_score.rds",
+    "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/gorilla_pruned_npc_ipsc_zero_score.rds",
+    "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/gorilla_random_npc_ipsc_zero_score.rds",
+    "/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs/gorilla_initial_npc_ipsc_zero_score.rds"
+  )
+)
+
+knitr::kable(reduced_no_score_files, col.names = c("Species", "Module Type", "File Location"), format = "markdown")
+
+```
+
+
+# 3. Combining all peaks
+
+```{r eval= FALSE}
+file_names_all_zero_scores <- list.files("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/peaks_with_no_motifs", pattern = ".rds", full.names = TRUE)
+
+all_peaks_zeroscored <- do.call(rbind, lapply(file_names_all_zero_scores, readRDS))
+
+all_peaks_zeroscored <- setDT(all_peaks_zeroscored)
+
+
+human <- data.table::fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/data.table.format/human_all_modules_npc_ipsc_reduced_maxscore_dt.csv", nThread = 32)
+
+gorilla <- data.table::fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/data.table.format/gorilla_all_modules_npc_ipsc_reduced_maxscore_dt.csv", nThread = 32)
+
+cyno <- data.table::fread("/data/home/vlad/TFBS_divergence/ATAC_Seq/cbust/final_reduced_max_motifs/data.table.format/cyno_all_modules_npc_ipsc_reduced_maxscore_dt.csv", nThread = 32)
+
+all_species_all_modules_all_peaks <- data.table::rbindlist(list(cyno, human, gorilla, all_peaks_zeroscored))
+
+
+fwrite(all_species_all_modules_all_peaks, "/data/home/vlad/TFBS_divergence/ATAC_Seq/all_peaks_processed_data_table.rds", nThread = 32)
+
+```
+
+
+
+
