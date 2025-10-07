@@ -20,7 +20,7 @@ dir.create(here(wd, "figures"))
 
 
 # load helper functions
-source(here("scripts/2.validations/2.8.POU5F1_Perturb_seq/helper_functions.R"))
+source(here("scripts/2.validations/2.8.POU5F1_Perturb_seq/helper_functions2.R"))
 
 # load Seurat object
 seu <- readRDS(here("data/validations/POU5F1_Perturb_seq_processed_data/seu.rds"))
@@ -29,10 +29,14 @@ seu <- readRDS(here("data/validations/POU5F1_Perturb_seq_processed_data/seu.rds"
 metadata <- seu@meta.data
 
 # downsample
-cells_control <- downsample_cells(metadata, "NT_control")
 cells_POU5F1 <- downsample_cells(metadata, c("hg38_POU5F1_n2", "macFas6_POU5F1_n1"))
+N = length(cells_POU5F1) / 2
+print(N)
+cells_control <- downsample_cells(metadata, "NT_control", N)
 seu_downsampled <- seu[, c(cells_control, cells_POU5F1)]
 dim(seu_downsampled)
+seu_downsampled@meta.data %>% 
+  dplyr::count(species, individual, perturbed_TF, batch)
 
 # create SCE object
 cnts <- as(seu_downsampled[["RNA"]]$counts, Class = "dgCMatrix")
@@ -50,11 +54,11 @@ colData(sce_downsampled) %>%
 
 # gene filtering & normalization
 sce_downsampled <- filter_and_normalize(sce_downsampled)
-saveRDS(sce_downsampled, here(wd, "sce_downsampled.rds"))
+saveRDS(sce_downsampled, here(wd, "sce_downsampled2.rds"))
 
 # DE testing using dream
 de_results <- DE_testing_LMM(sce_downsampled)
-saveRDS(de_results, here(wd, "de_results.rds"))
+saveRDS(de_results, here(wd, "de_results2.rds"))
 
 # load POU5F1 module membership info
 all_genes <- readRDS(here("data/neural_differentiation_dataset/processed_data/genes.rds"))
@@ -71,5 +75,5 @@ p <- wrap_plots(p1 + theme(legend.position = "none"),
            p2 + guides(color = guide_legend(override.aes = list(size = 3, shape = 19, alpha = 1))),
            p3,
            widths = c(1, 1, 0.6))
-ggsave(here(wd, "figures/pou5f1_module_crispri_results.png"), p, width = 13, height = 4, dpi = 600)
-ggsave(here(wd, "figures/pou5f1_module_crispri_results.pdf"), p, width = 13, height = 4)
+ggsave(here(wd, "figures/pou5f1_module_crispri_results2.png"), p, width = 13, height = 4, dpi = 600)
+ggsave(here(wd, "figures/pou5f1_module_crispri_results2.pdf"), p, width = 13, height = 4)

@@ -246,11 +246,13 @@ plot_umap_split2 <- function(seu, color_by, split_by ="individual", colors = NUL
     left_join(seu@meta.data) %>% 
     dplyr::rename(umap_1 = .data[[paste0(gsub("\\.|\\_", "", reduction), "_1")]], umap_2 = .data[[paste0(gsub("\\.|\\_", "", reduction), "_2")]])
   
+  gRNAs <- levels(umap_df[[color_by]])[1]
+  
   ggplot(umap_df, aes(x = umap_1, y = umap_2, color = .data[[color_by]])) +
     theme_bw(base_size = text_size) +
     facet_wrap(~.data[[split_by]], scales = "free") +
-    geom_point(data = . %>% dplyr::filter(gRNAs_of_interest != "best POU5F1\ngRNA pair"), size = point_size, alpha = 0.3) +
-    geom_point(data = . %>% dplyr::filter(gRNAs_of_interest == "best POU5F1\ngRNA pair"), size = point_size*1.5, alpha = 0.7) +
+    geom_point(data = . %>% dplyr::filter(.data[[color_by]] != gRNAs), size = point_size, alpha = 0.3) +
+    geom_point(data = . %>% dplyr::filter(.data[[color_by]] == gRNAs), size = point_size*1.5, alpha = 0.7) +
     scale_color_manual(values = colors, breaks = c("best POU5F1\ngRNA pair", "other POU5F1\ngRNAs", "control")) +
     guides(color = guide_legend(override.aes = list(size = text_size / 3.75, alpha = 1))) +
     theme(panel.grid.major = element_blank(),
@@ -268,7 +270,7 @@ plot_umap_split2 <- function(seu, color_by, split_by ="individual", colors = NUL
 
 
 # downsample cells so that cell numbers are equal across species, and if possible, also across individuals and batches
-downsample_cells <- function(metadata, perturbations) {
+downsample_cells <- function(metadata, perturbations, N = NULL) {
   
   metadata_TF <- metadata %>% 
     dplyr::filter(perturbation %in% perturbations)
@@ -286,10 +288,14 @@ downsample_cells <- function(metadata, perturbations) {
     dplyr::filter(batch %in% intersect(human_exp, cynomolgus_exp)) %>% 
     dplyr::mutate(batch = factor(batch, intersect(human_exp, cynomolgus_exp)))
   
-  N <- metadata_TF %>% 
-    dplyr::count(species) %>% 
-    pull(n) %>% 
-    min()
+  if (is.null(N)) {
+    
+    N <- metadata_TF %>% 
+      dplyr::count(species) %>% 
+      pull(n) %>% 
+      min()
+    
+  } 
   
   species <- setNames(levels(metadata_TF$species),
                       levels(metadata_TF$species))
@@ -548,22 +554,23 @@ DE_testing_LMM <- function(sce, n_cores = 20) {
   
   # metadata
   metadata <- as.data.frame(colData(sce))
+  TF <- setdiff(unique(metadata$perturbed_TF), "NT_control")
   
   # contrast
   L <- makeContrastsDream(form, 
                           metadata,
-                          contrasts = c(DE_cyno = "conditionPOU5F1 + speciescynomolgus:conditionPOU5F1")) 
+                          contrasts = c(DE_cyno = paste0("condition", TF, " + speciescynomolgus:condition", TF))) 
   
   # fit the dream model on each gene
   fit <- dream(as.matrix(logcounts(sce)), form, metadata, L, useWeights = FALSE, BPPARAM = MulticoreParam(n_cores), computeResiduals = FALSE)
   fit <- eBayes(fit)
   
   # get DE genes for each contrast
-  de_results <- bind_rows(human = limma::topTable(fit, coef = "conditionPOU5F1", number = Inf, adjust.method = "BH", confint = T) %>% 
+  de_results <- bind_rows(human = limma::topTable(fit, coef = paste0("condition", TF), number = Inf, adjust.method = "BH", confint = T) %>% 
                             rownames_to_column("gene"),
                           cynomolgus = limma::topTable(fit, coef = "DE_cyno", number = Inf, adjust.method = "BH", confint = T) %>%
                             rownames_to_column("gene"),
-                          interaction = limma::topTable(fit, coef = "speciescynomolgus:conditionPOU5F1",  number = Inf, adjust.method = "BH", confint = T) %>% 
+                          interaction = limma::topTable(fit, coef = paste0("speciescynomolgus:condition", TF),  number = Inf, adjust.method = "BH", confint = T) %>% 
                             rownames_to_column("gene"),
                           .id = "contrast")
   
