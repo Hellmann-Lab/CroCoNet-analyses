@@ -580,7 +580,7 @@ DE_testing_LMM <- function(sce, n_cores = 20) {
 
 
 # plot DE results across positively or negatively correlated module memebr genes and non-module genes
-plot_DE_results <- function(de_results, pruned_modules, all_genes) {
+plot_DE_results <- function(de_results, pruned_modules, all_genes, label = NULL) {
   
   # all genes tested in Perturb-seq DE analysis
   all_genes_perturbseq <- unique(de_results$gene)
@@ -608,7 +608,7 @@ plot_DE_results <- function(de_results, pruned_modules, all_genes) {
   max_lfc <- max(c(de_results_filt$logFC_upr.human, de_results_filt$logFC_upr.cynomolgus))
   min_lfc <- min(c(de_results_filt$logFC_lwr.human, de_results_filt$logFC_lwr.cynomolgus))
   
-  de_results_filt %>%
+  p <- de_results_filt %>%
     ggplot(aes(x = logFC.human, y = logFC.cynomolgus, color = category, size = category)) +
     geom_errorbar(aes(xmin = logFC_lwr.human, xmax = logFC_upr.human, color = category), size = 0.07, alpha = 0.5, show.legend = FALSE) +
     geom_errorbar(aes(ymin = logFC_lwr.cynomolgus, ymax = logFC_upr.cynomolgus, color = category), size = 0.07, alpha = 0.5, show.legend = FALSE) +
@@ -618,8 +618,6 @@ plot_DE_results <- function(de_results, pruned_modules, all_genes) {
     theme_bw(base_size = 14) +
     scale_color_manual(values = c("activated\ntargets" = "darkseagreen4", "repressed\ntargets" = "indianred3", "not in\nmodule" = "grey70")) +
     scale_size_manual(values = c("TRUE" = 0.2, `no significant difference` = 0.05), guide = "none") +
-    geom_label_repel(data = . %>% filter(gene == "SPP1"),
-                     aes(label = gene), fill = "white", size = 3, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, max.overlaps = 10, show.legend = FALSE) +
     xlab(expression(paste(log[2], FC, " (human)"))) +
     ylab(expression(paste(log[2], FC, " (cynomolgus)"))) +
     theme(legend.title = element_blank(),
@@ -627,6 +625,15 @@ plot_DE_results <- function(de_results, pruned_modules, all_genes) {
           legend.margin = margin(l = -10)) +
     xlim(min_lfc, max_lfc) +
     ylim(min_lfc, max_lfc)
+  
+  if (!is.null(label)) {
+    
+    p <- p + geom_label_repel(data = . %>% filter(gene %in% label),
+                     aes(label = gene), fill = "white", size = 3, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, max.overlaps = 10, show.legend = FALSE)
+    
+  }
+  
+  p
   
 }
 
