@@ -47,7 +47,7 @@ fnames_hg38_mf6 <- tibble(sid = names(aa_alignments_hg38_mf6),
 length(unique(fnames_hg38_mf6$tid))
 length(unique(fnames_hg38_mf6$gid))
 
-# longest CCDS (or if there's no CCDS annotated, the longest CDS)
+# longest CCDS (or if there's no CCDS annotated, the longest CDS) present in the alignments
 regulator_CCDS <- hg38_gtf %>% 
   as_tibble() %>% 
   dplyr::filter(gene_name %in% regulators & transcript_type == "protein_coding" & transcript_id %in% fnames_hg38_mf6$tid & transcript_id %in% fnames_hg38_gg6$tid) %>% 
@@ -133,7 +133,7 @@ nrow(aa_conservation)
 aa_conservation %>% 
   dplyr::filter(xlen.gg6 != n_codons | xlen.mf6 != n_codons) %>% 
   nrow()
-saveRDS(aa_conservation, here(wd, "aa_conservation.rds"))
+saveRDS(aa_conservation, here(wd, "aa_conservation_regulators.rds"))
 
 # plot distributions
 aa_conservation %>% 

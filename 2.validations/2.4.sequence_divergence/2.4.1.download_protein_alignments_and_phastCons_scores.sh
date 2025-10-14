@@ -20,3 +20,6 @@ wget --no-check-certificate https://genome.senckenberg.de/download/TOGA/human_hg
 mv proteinAlignments.fa.gz orthologsClassification.tsv.gz macFas6_protein_alignments/
 gzip -d macFas6_protein_alignments/*
 
+# download primate phastCons scores
+wget http://cgl.gi.ucsc.edu/data/cactus/zoonomia-2021-track-hub/hg38/phyloPPrimates.bigWig
+

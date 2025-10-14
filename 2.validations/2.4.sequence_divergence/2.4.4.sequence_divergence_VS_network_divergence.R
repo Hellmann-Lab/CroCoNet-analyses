@@ -1,4 +1,4 @@
-here::i_am("scripts/2.validations/2.4.sequence_divergence/2.4.3.sequence_divergence_VS_network_divergence.R")
+here::i_am("scripts/2.validations/2.4.sequence_divergence/2.4.4.sequence_divergence_VS_network_divergence.R")
 
 library(tidyverse)
 library(here)
@@ -23,8 +23,8 @@ phylo_dist <- ape::cophenetic.phylo(tree) %>%
   dplyr::filter(as.integer(species1) < as.integer(species2) & !(species1 == "gorilla" & species2 == "cynomolgus")) %>% 
   dplyr::transmute(species_pair = paste0(species1, " VS ", species2), distance) 
 
-# sequence conservation
-aa_cons_per_spec_pair <- readRDS(here(wd, "aa_conservation.rds")) %>%
+# amino acid conservation
+aa_cons_per_spec_pair <- readRDS(here(wd, "aa_conservation_regulators.rds")) %>%
   dplyr::select(regulator = gene_name, aa_cons.gg6, aa_cons.mf6) %>% 
   inner_join(module_conservation_overall) %>% 
   dplyr::filter(conservation != "not_significant") %>% 
@@ -52,3 +52,22 @@ aa_cons_per_spec_pair %>%
   ylab("protein sequence divergence")+
   scale_x_discrete(labels = c("conserved\nnetwork", "diverged\nnetwork"))
 ggsave(here(fig_dir, "sequence_divergence_VS_network_divergence.png"), width = 7, height = 5)
+
+# phastCons
+phastCons <- readRDS(here(wd, "phastCons_regulators.rds")) %>%
+  inner_join(module_conservation_overall, by = c("gene_name" = "regulator")) %>% 
+  dplyr::filter(conservation != "not_significant")
+
+# plot 1 - phastCons for regulators with conserved and diverged network modules
+phastCons %>% 
+  ggplot(aes(x = conservation, y = 1 - mean_phastCons)) +
+  geom_beeswarm(dodge.width = 0.2, size = 1, cex = 2) +
+  theme_bw(base_size = 14) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(size = 13, color = "black"),
+        legend.title = element_text(margin = margin(b = 14)),
+        legend.key.spacing.y = unit(0.4, "cm")) +
+  stat_summary(fun="median", geom="crossbar", linewidth = 0.2, width = 0.25) +
+  ylab("1 - phastCons") +
+  scale_x_discrete(labels = c("conserved\nnetwork", "diverged\nnetwork"))
+ggsave(here(fig_dir, "phastCons_VS_network_divergence.png"), width = 7, height = 5)

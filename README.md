@@ -187,7 +187,7 @@ scripts:
 - [Summarize motif scores per
   gene](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.17.summarize_motif_scores_per_gene.Rmd)
 
-<p style="margin: -0.85em 0 0.15em 1.5em;">
+<p style="margin: -1em 0 0em 2em;">
 <em>Start here to skip computationally intensive steps and jump to core
 analysis</em>
 </p>
@@ -204,13 +204,16 @@ analysis</em>
 </summary>
 
 - [Download protein
-  alignments](2.validations/2.4.sequence_divergence/2.4.1.download_protein_alignments.sh)
-- [Calculate human-gorilla and human-cynomolgus protein sequence
-  conservation](2.validations/2.4.sequence_divergence/2.4.2.calculate_sequence_divergence.R)
+  alignments](2.validations/2.4.sequence_divergence/2.4.1.download_protein_alignments_and_phastCons_scores.sh)
+- [Calculate the human-gorilla and human-cynomolgus AA conservation of
+  the
+  regulators](2.validations/2.4.sequence_divergence/2.4.2.calculate_sequence_divergence.R)
   - [Helper function for alignment
     scoring](2.validations/2.4.sequence_divergence/alignment_scoring_function.R)
+- [Calculate the mean phastCons scores of the
+  regulators](2.validations/2.4.sequence_divergence/2.4.3.calculate_phastCons_scores.R)
 - [Test and plot association between sequence divergence and network
-  divergence](2.validations/2.4.sequence_divergence/2.4.3.sequence_divergence_VS_network_divergence.R)
+  divergence](2.validations/2.4.sequence_divergence/2.4.4.sequence_divergence_VS_network_divergence.R)
 
 </details>
 <details>
@@ -247,7 +250,7 @@ analysis</em>
 - [Check enrichment around transcriptional start
   sites](2.validations/2.6.POU5F1_ChIP_seq/2.6.7.check_TSS_enrichment.R)
 
-<p style="margin: -0.85em 0 0.15em 1.5em;">
+<p style="margin: -1em 0 0em 2em;">
 <em>Start here to skip computationally intensive steps and jump to core
 analysis</em>
 </p>
@@ -293,7 +296,7 @@ analysis</em>
 - [QC &
   filtering](2.validations/2.8.POU5F1_Perturb_seq/2.8.8.QC_and_filtering.R)
 
-<p style="margin: -0.85em 0 0.15em 1.5em;">
+<p style="margin: -1em 0 0em 2em;">
 <em>Start here to skip computationally intensive steps and jump to core
 analysis</em>
 </p>
@@ -384,6 +387,8 @@ and tables featuring in the manuscript.
 - [Supplementary Figure S7](4.paper_figures_and_tables/suppl.figureS7.R)
 - [Supplementary Figure S8](4.paper_figures_and_tables/suppl.figureS8.R)
 - [Supplementary Figure S9](4.paper_figures_and_tables/suppl.figureS9.R)
+- [Supplementary Figure
+  S10](4.paper_figures_and_tables/suppl.figureS10.R)
 
 </details>
 <details>

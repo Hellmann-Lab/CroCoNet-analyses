@@ -10,7 +10,7 @@ wd <- here("data/validations/expression_pattern_divergence/")
 dir.create(wd)
 
 
-## Downsample SCE object ------------------------------------------------
+## Calculate mean expression of regulators ------------------------------------------------
 
 # load sce object
 sce <- readRDS(here("data/neural_differentiation_dataset/processed_data/sce.rds"))
@@ -21,8 +21,43 @@ sce$bin<-case_when(sce$pseudotime <= 0.25 ~ "early",
                    T ~ "late")
 
 # get metadata
-metadata <- colData(sce) %>%
-  as.data.frame()
+metadata <- as.data.frame(colData(sce)) %>% 
+  dplyr::mutate(species_stage = paste0(species, "_", bin))
+
+# calculate weights so that each stage and species contributes equally to the mean expression
+weights <- metadata %>% 
+  dplyr::count(species_stage) %>% 
+  dplyr::mutate(weight = 1/n) %>% 
+  dplyr::select(species_stage, weight) %>% 
+  deframe()
+
+weights_per_cell <- metadata %>% 
+  dplyr::mutate(weight = weights[species_stage],
+                weight = weight / sum(weight)) %>% 
+  dplyr::select(cell, weight)
+
+# logcounts
+logcnts <- logcounts(sce)
+
+table(weights_per_cell$cell == colnames(sce))
+
+# load regulators
+regulators <- readRDS(here("data/neural_differentiation_dataset/CroCoNet_analysis/regulators.rds"))
+
+# calculate weighted mean
+mean_expr <- weights_per_cell %>% 
+  expand_grid(regulator = regulators) %>% 
+  group_by(regulator) %>% 
+  dplyr::mutate(expr = logcnts[unique(regulator), cell]) %>% 
+  ungroup() %>% 
+  dplyr::mutate(expr_weighted = weight*expr) %>% 
+  group_by(regulator) %>% 
+  dplyr::summarize(mean_expr = sum(expr_weighted)) %>%
+  ungroup()
+saveRDS(mean_expr, here(wd, "mean_expr_regulators.rds"))
+
+
+## Downsample SCE object ------------------------------------------------
 
 # downsampling function
 source(here("scripts/2.validations/2.5.expression_pattern_divergence/subsampling_helper_function.R"))

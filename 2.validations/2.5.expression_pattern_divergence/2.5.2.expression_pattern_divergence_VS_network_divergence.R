@@ -1,4 +1,4 @@
-here::i_am("scripts/4.paper_figures_and_tables/suppl.tables.R")
+here::i_am("scripts/2.validations/2.5.expression_pattern_divergence/2.5.2.expression_pattern_divergence_VS_network_divergence.R")
 
 library(tidyverse)
 library(here)

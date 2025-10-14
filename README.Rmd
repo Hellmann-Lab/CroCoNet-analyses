@@ -110,17 +110,18 @@ To validate the results of the CroCoNet analysis on the neural differentiation d
 * [Score motifs of each regulator in the peaks associated to their module members using Cluster-Buster](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.16.run_cbust.sh)
 * [Summarize motif scores per gene](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.17.summarize_motif_scores_per_gene.Rmd)
 
-<p style="margin: -0.85em 0 0.15em 1.5em;"><em>Start here to skip computationally intensive steps and jump to core analysis</em></p>
+<p style="margin: -1em 0 0em 2em;"><em>Start here to skip computationally intensive steps and jump to core analysis</em></p>
 
 * [Compare binding site enrichment across module types (initial, pruned, random)](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.18.binding_site_enrichment_across_module_types.R)
 * [Calculate binding site divergence across species](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.19.binding_site_divergence_across_species.R)
 </details>
 <details>
 <summary><strong>Sequence divergence</strong></summary>
-* [Download protein alignments](2.validations/2.4.sequence_divergence/2.4.1.download_protein_alignments.sh)
-* [Calculate human-gorilla and human-cynomolgus protein sequence conservation](2.validations/2.4.sequence_divergence/2.4.2.calculate_sequence_divergence.R)
+* [Download protein alignments](2.validations/2.4.sequence_divergence/2.4.1.download_protein_alignments_and_phastCons_scores.sh)
+* [Calculate the human-gorilla and human-cynomolgus AA conservation of the regulators](2.validations/2.4.sequence_divergence/2.4.2.calculate_sequence_divergence.R)
     * [Helper function for alignment scoring](2.validations/2.4.sequence_divergence/alignment_scoring_function.R)
-* [Test and plot association between sequence divergence and network divergence](2.validations/2.4.sequence_divergence/2.4.3.sequence_divergence_VS_network_divergence.R)
+* [Calculate the mean phastCons scores of the regulators](2.validations/2.4.sequence_divergence/2.4.3.calculate_phastCons_scores.R)
+* [Test and plot association between sequence divergence and network divergence](2.validations/2.4.sequence_divergence/2.4.4.sequence_divergence_VS_network_divergence.R)
 </details>
 <details>
 <summary><strong>Expression pattern divergence</strong></summary>
@@ -138,7 +139,7 @@ To validate the results of the CroCoNet analysis on the neural differentiation d
 * [Calculate ChIP-seq coverage](2.validations/2.6.POU5F1_ChIP_seq/2.6.6.get_coverage.sh)
 * [Check enrichment around transcriptional start sites](2.validations/2.6.POU5F1_ChIP_seq/2.6.7.check_TSS_enrichment.R)
 
-<p style="margin: -0.85em 0 0.15em 1.5em;"><em>Start here to skip computationally intensive steps and jump to core analysis</em></p>
+<p style="margin: -1em 0 0em 2em;"><em>Start here to skip computationally intensive steps and jump to core analysis</em></p>
 
 * [Calculate POU5F1 ChIP-seq enrichment near POU5F1 module genes](2.validations/2.6.POU5F1_ChIP_seq/2.6.8.calculate_enrichment_for_POU5F1_module.R)
 </details>
@@ -160,7 +161,7 @@ To validate the results of the CroCoNet analysis on the neural differentiation d
     * [Individual demultiplexing worker script](2.validations/2.8.POU5F1_Perturb_seq/indiv_demultiplexing_per_lane_and_genome.sh)
 * [QC & filtering](2.validations/2.8.POU5F1_Perturb_seq/2.8.8.QC_and_filtering.R)
 
-<p style="margin: -0.85em 0 0.15em 1.5em;"><em>Start here to skip computationally intensive steps and jump to core analysis</em></p>
+<p style="margin: -1em 0 0em 2em;"><em>Start here to skip computationally intensive steps and jump to core analysis</em></p>
 
 * [Stemness scores & knockdown efficiencies](2.validations/2.8.POU5F1_Perturb_seq/2.8.9.stemness_scores_and_knockdown_efficiencies.R)
 * [DE analysis](2.validations/2.8.POU5F1_Perturb_seq/2.8.10.DE_analysis.R)
@@ -209,6 +210,7 @@ This directory contains all scripts required to reproduce the figures and tables
 * [Supplementary Figure S7](4.paper_figures_and_tables/suppl.figureS7.R)
 * [Supplementary Figure S8](4.paper_figures_and_tables/suppl.figureS8.R)
 * [Supplementary Figure S9](4.paper_figures_and_tables/suppl.figureS9.R)
+* [Supplementary Figure S10](4.paper_figures_and_tables/suppl.figureS10.R)
 </details>
 <details>
 <summary><strong>Supplementary tables</strong></summary>
