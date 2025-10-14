@@ -1,3 +1,18 @@
+here::i_am("scripts/2.validations/2.8.POU5F1_Perturb_seq/2.8.9.stemness_scores_and_knockdown_efficiencies.R")
+
+library(tidyverse)
+library(foreach)
+library(doParallel)
+library(here)
+
+wd <- here("data/validations/POU5F1_Perturb_seq_processed_data/")
+
+
+## Subsetting POU5F1-perturbed and control cells --------------------------------------
+
+# load Seurat object
+seu <- readRDS(here(wd, "seu_allTFs_filtered.rds"))
+
 # keep only POU5F1 and control cells
 seu <- seu[, seu$perturbed_TF %in% c("NT_control", "POU5F1")]
 dim(seu)
@@ -32,7 +47,7 @@ table(seu$perturbation)
 length(unique(seu$perturbation_species))
 
 
-## Gene filter #2: expression -------------------------------------------
+## Gene filtering based on expression -------------------------------------------
 
 # get (subsetted) metadata and raw counts
 metadata <- seu@meta.data
@@ -312,6 +327,61 @@ dev.off()
 
 
 ## POU5F1 downregulation ------------------------------------------------
+
+# calculate % knockdown and its confidence interval for each gRNA 
+percent_KD <- foreach(species = c("human", "cynomolgus"),
+                      .combine = bind_rows) %do% {  
+                        
+                        seu_filt <-  seu[, seu$species == species]
+                        
+                        data.frame(species = seu_filt$species,
+                                   perturbed_TF = seu_filt$perturbed_TF,
+                                   gRNA = seu_filt$perturbation,
+                                   cell = seu_filt$cell,
+                                   expr = as.numeric(as(seu_filt[["RNA"]]$data["POU5F1",], Class = "dgCMatrix"))) %>% 
+                          group_by(species, perturbed_TF, gRNA) %>% 
+                          dplyr::summarise(n_cells = length(expr),
+                                           frac_cells_expr_perturbed = sum(expr > 0) / length(expr),
+                                           mean_expr_perturbed = mean(expr),
+                                           moe_expr_perturbed = -stats::qt(p = 0.025, df = length(expr) - 1)*sd(expr)/sqrt(length(expr)),
+                                           lwr_expr_perturbed = mean_expr_perturbed - moe_expr_perturbed,
+                                           upr_expr_perturbed = mean_expr_perturbed + moe_expr_perturbed) %>% 
+                          ungroup() %>% 
+                          dplyr::mutate(frac_cells_expr_control = frac_cells_expr_perturbed[gRNA == "NT_control"],
+                                        mean_expr_control = mean_expr_perturbed[gRNA == "NT_control"],
+                                        moe_expr_control = moe_expr_perturbed[gRNA == "NT_control"],
+                                        lwr_expr_control = lwr_expr_perturbed[gRNA == "NT_control"],
+                                        upr_expr_control = upr_expr_perturbed[gRNA == "NT_control"],.after = 3) %>% 
+                          dplyr::filter(gRNA != "NT_control") %>% 
+                          dplyr::mutate(FC = mean_expr_perturbed/mean_expr_control,
+                                        moe_FC = ((moe_expr_control/mean_expr_control)^2 + (moe_expr_perturbed/mean_expr_perturbed)^2)^0.5*FC,
+                                        percent_KD = (1 - FC)*100,
+                                        lwr_percent_KD = percent_KD - 100*moe_FC,
+                                        upr_percent_KD = percent_KD + 100*moe_FC,
+                                        logFC_raw = log2((mean_expr_perturbed + 1)/(mean_expr_control + 1))) %>% 
+                          dplyr::select(-moe_expr_control, -moe_expr_perturbed, -moe_FC, -FC)
+                        
+                      }
+saveRDS(percent_KD, here(wd, "percent_KD.rds"))
+
+# chose best gRNAs
+seu$gRNAs_of_interest_POU5F1 <- factor(case_when(seu$gRNA %in% c("macFas6_POU5F1_n1", "hg38_POU5F1_n2") ~ "best POU5F1\ngRNA pair",
+                                                 seu$perturbed_TF != "NT_control" ~ "other targeting\ngRNAs",
+                                                 T ~ "control"),
+                                       c("best POU5F1\ngRNA pair", "other targeting\ngRNAs", "control"))
+saveRDS(seu, here(wd, "seu.rds"))
+
+# UMAP on the integrated space, colored by POU5F1 expression and split by species
+png("figures/umap_pou5f1_per_spec_integrated.png", width = 1450, height = 600)
+print(plot_umap_split(seu, "POU5F1", "species", reduction = "umap_per_species", point_size = 1))
+dev.off()
+
+# UMAP on the integrated space, colored by batch and split by species
+png("figures/umap_pou5f1_gRNAs_per_spec_integrated.png", width = 1450, height = 600)
+print(plot_umap_split2(seu, "gRNAs_of_interest_POU5F1", "species",  c("best POU5F1\ngRNA pair" = "maroon", "other targeting\ngRNAs" = "grey40", "control" = "grey70"), "umap_per_species", point_size = 1, legend_title = ""))
+dev.off()
+
+
 
 # chose best gRNAs
 seu$gRNAs_of_interest <- factor(case_when(seu$gRNA %in% c("macFas6_POU5F1_n1", "hg38_POU5F1_n2") ~ "best POU5F1\ngRNA pair",

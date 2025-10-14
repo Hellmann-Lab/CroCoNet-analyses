@@ -77,3 +77,67 @@ p <- wrap_plots(p1 + theme(legend.position = "none"),
            widths = c(1, 1, 0.6))
 ggsave(here(wd, "figures/pou5f1_module_crispri_results2.png"), p, width = 13, height = 4, dpi = 600)
 ggsave(here(wd, "figures/pou5f1_module_crispri_results2.pdf"), p, width = 13, height = 4)
+
+# test enrichment of DE genes in the CroCoNet POU5F1 module
+de_results_filt <- de_results %>%
+  dplyr::filter(gene != "POU5F1") %>% 
+  dplyr::mutate(in_module = gene %in% module_genes,
+                significant = adj.P.Val < 0.05) %>% 
+  dplyr::select(gene, in_module, contrast, significant) %>% 
+  pivot_wider(names_from = "contrast", values_from = significant) %>% 
+  dplyr::mutate(human_or_cynomolgus = human | cynomolgus)
+
+de_table <- de_results_filt %>% 
+  dplyr::count(in_module, human_or_cynomolgus) %>% 
+  pivot_wider(names_from = in_module, values_from = n) %>% 
+  dplyr::mutate(`TRUE` = replace_na(`TRUE`, 0)) %>% 
+  column_to_rownames("human_or_cynomolgus") %>% 
+  as.matrix()
+
+de_table
+
+fisher.test(de_table)
+
+# test enrichment of DR genes in the CroCoNet POU5F1 module
+dr_table <- de_results_filt %>% 
+  dplyr::filter(human_or_cynomolgus) %>% 
+  dplyr::count(in_module, interaction) %>% 
+  pivot_wider(names_from = in_module, values_from = n) %>% 
+  dplyr::mutate(`TRUE` = replace_na(`TRUE`, 0)) %>% 
+  column_to_rownames("interaction") %>% 
+  as.matrix()
+
+dr_table
+
+fisher.test(dr_table)
+
+# DE analysis gene numbers
+length(unique(de_results_filt$gene))
+
+de_results_filt %>% 
+  dplyr::filter(human) %>% 
+  nrow()
+
+de_results_filt %>% 
+  dplyr::filter(cynomolgus) %>% 
+  nrow()
+
+de_results_filt %>% 
+  dplyr::filter(interaction) %>% 
+  nrow()
+
+de_results_filt %>% 
+  dplyr::filter(in_module) %>% 
+  nrow()
+
+de_results_filt %>% 
+  dplyr::filter(in_module & human) %>% 
+  nrow()
+
+de_results_filt %>% 
+  dplyr::filter(in_module & cynomolgus) %>% 
+  nrow()
+
+de_results_filt %>% 
+  dplyr::filter(in_module & interaction) %>% 
+  nrow()

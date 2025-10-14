@@ -1,17 +1,23 @@
+here::i_am("scripts/2.validations/2.5.expression_pattern_divergence/2.5.1.calculate_expression_pattern_divergence.R")
+
 library(tidyverse)
 library(BiocManager)
 library(SingleCellExperiment)
 library(variancePartition)
+library(here)
+
+wd <- here("data/validations/expression_pattern_divergence/")
+dir.create(wd)
 
 
 ## Downsample SCE object ------------------------------------------------
 
 # load sce object
-sce <- readRDS("../01.mapping_and_QC/RDS/sce_QCfilt_cellTypeFilt_multiBatchNorm.rds")
+sce <- readRDS(here("data/neural_differentiation_dataset/processed_data/sce.rds"))
 
 # bin cells based on pseudotime
-sce$bin<-case_when(sce$scorpius_pt <= 0.25 ~ "early",
-                   sce$scorpius_pt <= 0.75 ~ "middle",
+sce$bin<-case_when(sce$pseudotime <= 0.25 ~ "early",
+                   sce$pseudotime <= 0.75 ~ "middle",
                    T ~ "late")
 
 # get metadata
@@ -19,7 +25,7 @@ metadata <- colData(sce) %>%
   as.data.frame()
 
 # downsampling function
-source("/data/home/geuder/Differentiation20/remap/2024/functions/functions_nonrandom_sampling.R")
+source(here("scripts/2.validations/2.5.expression_pattern_divergence/subsampling_helper_function.R"))
 
 # early
 early_downsampl <- run_nonrandom_sampling(coldata = metadata,
@@ -27,7 +33,7 @@ early_downsampl <- run_nonrandom_sampling(coldata = metadata,
                                           n_quantile_bins = 15,
                                           seed = 100)
 
-ggplot(early_downsampl, aes(x=species, y=scorpius_pt))+
+ggplot(early_downsampl, aes(x=species, y=pseudotime))+
   geom_violin()+
   geom_boxplot(width=0.1)
 
@@ -37,7 +43,7 @@ mid_downsampl <- run_nonrandom_sampling(coldata = metadata,
                                         n_quantile_bins = 15,
                                         seed = 100)
 
-ggplot(mid_downsampl, aes(x=species, y=scorpius_pt))+
+ggplot(mid_downsampl, aes(x=species, y=pseudotime))+
   geom_violin()+
   geom_boxplot(width=0.1)
 
@@ -48,7 +54,7 @@ late_downsampl <- run_nonrandom_sampling(coldata = metadata,
                                          n_quantile_bins = 15,
                                          seed = 100)
 
-ggplot(late_downsampl, aes(x=species, y=scorpius_pt))+
+ggplot(late_downsampl, aes(x=species, y=pseudotime))+
   geom_violin()+
   geom_boxplot(width=0.1)
 
@@ -60,36 +66,34 @@ dim(sce_downsampl)
 # create variable: species + bin
 sce_downsampl$species_stage <-paste0(sce_downsampl$species, "_", sce_downsampl$bin)
 table(sce_downsampl$species_stage)
-saveRDS(sce_downsampl, "RDS/sce_downsampl.rds")
+saveRDS(sce_downsampl, here(wd, "sce_downsampl.rds"))
 
 # metadata
 metadata_downsampl <- as.data.frame(colData(sce_downsampl))
 
 # design
-form <- ~ 0 + species_stage + (1|clone)
+form <- ~ 0 + species_stage + (1|replicate)
 
 # contrast
 L <- makeContrastsDream(form,
                         metadata_downsampl,
-                        contrasts = c(human_early_vs_late = "species_stagehuman_late - species_stagehuman_early",
-                                      gorilla_early_vs_late = "species_stagegorilla_late - species_stagegorilla_early",
-                                      cynomolgus_early_vs_late = "species_stagecynomolgus_late - species_stagecynomolgus_early"))
+                        contrasts = c(human = "species_stagehuman_late - species_stagehuman_early",
+                                      gorilla = "species_stagegorilla_late - species_stagegorilla_early",
+                                      cynomolgus = "species_stagecynomolgus_late - species_stagecynomolgus_early",
+                                      gorilla_human = "species_stagegorilla_late - species_stagegorilla_early - species_stagehuman_late + species_stagehuman_early",
+                                      cynomolgus_human = "species_stagecynomolgus_late - species_stagecynomolgus_early - species_stagehuman_late + species_stagehuman_early"))
 
 # fit the dream model on each gene
-fit <- dream(as.matrix(logcounts(sce_downsampl)), form, metadata_downsampl, L, useWeights = FALSE, BPPARAM = MulticoreParam(10), computeResiduals = FALSE)
-fit2 <- eBayes(fit)
-saveRDS(fit, "RDS/fit_dream_noebayes.rds")
-saveRDS(fit2, "RDS/fit_dream.rds")
+fit <- dream(as.matrix(logcounts(sce_downsampl)), form, metadata_downsampl, L, useWeights = FALSE, BPPARAM = MulticoreParam(20), computeResiduals = FALSE)
+saveRDS(fit, here(wd, "dream_fit_noebayes.rds"))
+fit <- eBayes(fit)
+saveRDS(fit, here(wd, "dream_fit.rds"))
 
-# Wald-test early VS late per species
-de_results_df <- bind_rows(human = topTable(fit2, coef="human_early_vs_late", number=Inf, adjust="BH", confint = TRUE) %>% rownames_to_column("gene") ,
-                           gorilla = topTable(fit2, coef="gorilla_early_vs_late", number=Inf, adjust="BH", confint = TRUE) %>% rownames_to_column("gene") ,
-                           cynomolgus = topTable(fit2, coef="cynomolgus_early_vs_late", number=Inf, adjust="BH", confint = TRUE) %>% rownames_to_column("gene"),
-                           .id = "species")
-saveRDS(de_results_df, "RDS/de_results_df_dream.rds")
-
-# F-test across early VS late of all species
-dr_results_df <- variancePartition::topTable(fit, coef = c("human_early_vs_late", "gorilla_early_vs_late", "cynomolgus_early_vs_late"), number = Inf, adjust.method = "BH") %>%
-  dplyr::select(any_of(c("F", "t", "adj.P.Val"))) %>%
-  tibble::rownames_to_column("gene")
-saveRDS(dr_results_df, "RDS/dr_results_df_dream_noebayes.rds")
+# get LFCs and p-values per contrast
+de_results_df <- bind_rows(human = topTable(fit, coef="human", number=Inf, adjust="BH") %>% rownames_to_column("gene") ,
+                           gorilla = topTable(fit, coef="gorilla", number=Inf, adjust="BH") %>% rownames_to_column("gene") ,
+                           cynomolgus = topTable(fit, coef="cynomolgus", number=Inf, adjust="BH") %>% rownames_to_column("gene"),
+                           gorilla_human = topTable(fit, coef="gorilla_human", number=Inf, adjust="BH") %>% rownames_to_column("gene"),
+                           cynomolgus_human = topTable(fit, coef="cynomolgus_human", number=Inf, adjust="BH") %>% rownames_to_column("gene"),
+                           .id = "contrast")
+saveRDS(de_results_df, here(wd, "de_results.rds"))

@@ -63,9 +63,9 @@ scripts to analyze this dataset are the following:
   - [YAML for mapping to the macFas6
     genome](1.neural_differentiation_dataset/1.1.mapping_and_QC/macFas6.yaml)
 - [Download the cell type annotation reference
-  dataset](1.neural_differentiation_dataset/1.1.9.download_cell_type_annotation_ref.sh)
+  dataset](1.neural_differentiation_dataset/1.1.mapping_and_QC/1.1.9.download_cell_type_annotation_ref.sh)
 - [QC, filtering, normalization, cell type annotation and pseudotime
-  inference](1.neural_differentiation_dataset/1.1.10.QC_and_filtering.R)
+  inference](1.neural_differentiation_dataset/1.1.mapping_and_QC/1.1.10.QC_and_filtering.R)
 
 </details>
 <details>
@@ -80,7 +80,7 @@ scripts to analyze this dataset are the following:
 - [Infer networks per replicate using
   GRNBoost2](1.neural_differentiation_dataset/1.2.network_inference/1.2.3.run_GRNBoost2.sh)
   - [Network inference worker
-    script](1.neural_differentiation_dataset/1.2.network_inference/1.2.3.%20run_GRNBoost2.sh)
+    script](1.neural_differentiation_dataset/1.2.network_inference/arboreto_with_multiprocessing.py)
 
 </details>
 <p style="margin: 0.25em 0 0.2em 0.3em;">
@@ -102,14 +102,14 @@ analysis</em>
 <strong>Additional analyses</strong>
 </summary>
 
-- [Perform CroCoNet analysis using the top50 pruning
+- [Run CroCoNet analysis using the top50 pruning
   approach](1.neural_differentiation_dataset/1.4.additional_analyses/1.4.1.CroCoNet_analysis_with_top50_pruning.R)
 - [Compare results between the dynamic and top50 pruning
   approaches](1.neural_differentiation_dataset/1.4.additional_analyses/1.4.2.dynamic_VS_top50_pruning.R)
-- [Perform CroCoNet analysis using cor.adj preservation
+- [Run CroCoNet analysis using cor.adj preservation
   scores](1.neural_differentiation_dataset/1.4.additional_analyses/1.4.3.CroCoNet_analysis_with_cor_adj.R)
 - [Compare results between the cor.kIM and cor.adj preservation
-  scores](1.neural_differentiation_dataset/1.2.network_inference/1.4.4.cor_kIM_VS_cor_adj.R)
+  scores](1.neural_differentiation_dataset/1.4.additional_analyses/1.4.4.cor_kIM_VS_cor_adj.R)
 
 </details>
 
@@ -166,7 +166,7 @@ scripts:
 - [Generate blacklists from broad and high-intensity
   peaks](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.7.create_blacklists.R)
 - [Call peaks using Genrich with
-  backlists](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.8.peak_calling_with_blacklist.sh)
+  blacklists](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.8.peak_calling_with_blacklist.sh)
 - [Infer gorilla NPC peaks by liftOver of the human NPC
   peaks](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.9.liftOver_human_NPC_peaks_to_gorGor6.R)
 - [Download FASTQ files of the Nanopore
@@ -187,7 +187,7 @@ scripts:
 - [Summarize motif scores per
   gene](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.17.summarize_motif_scores_per_gene.Rmd)
 
-<p style="margin: -0.75em 0 0.25em 1.25em;">
+<p style="margin: -0.85em 0 0.15em 1.5em;">
 <em>Start here to skip computationally intensive steps and jump to core
 analysis</em>
 </p>
@@ -203,10 +203,14 @@ analysis</em>
 <strong>Sequence divergence</strong>
 </summary>
 
-- [Calculate protein sequence conservation based on pairwise
-  alignemnts](2.validations/2.4.seuqnece_divergence/2.4.1.calculate_sequence_divergence.R)
+- [Download protein
+  alignments](2.validations/2.4.sequence_divergence/2.4.1.download_protein_alignments.sh)
+- [Calculate human-gorilla and human-cynomolgus protein sequence
+  conservation](2.validations/2.4.sequence_divergence/2.4.2.calculate_sequence_divergence.R)
+  - [Helper function for alignment
+    scoring](2.validations/2.4.sequence_divergence/alignment_scoring_function.R)
 - [Test and plot association between sequence divergence and network
-  divergence](2.validations/2.4.seuqnece_divergence/2.4.2.sequence_divergence_VS_network_divergence.R)
+  divergence](2.validations/2.4.sequence_divergence/2.4.3.sequence_divergence_VS_network_divergence.R)
 
 </details>
 <details>
@@ -216,9 +220,11 @@ analysis</em>
 
 - [Perform DE analysis of scRNA-seq
   data](2.validations/2.5.expression_pattern_divergence/2.5.1.calculate_expression_pattern_divergence.R)
+  - [Helper function for
+    subsampling](2.validations/2.5.expression_pattern_divergence/subsampling_helper_function.R)
 - [Test and plot association between expression pattern divergence and
   network
-  divergence](2.5.expression_pattern_divergence/2.5.2.expression_pattern_divergence_VS_network_divergence.R)
+  divergence](2.validations/2.5.expression_pattern_divergence/2.5.2.expression_pattern_divergence_VS_network_divergence.R)
 
 </details>
 <details>
@@ -241,7 +247,7 @@ analysis</em>
 - [Check enrichment around transcriptional start
   sites](2.validations/2.6.POU5F1_ChIP_seq/2.6.7.check_TSS_enrichment.R)
 
-<p style="margin: -0.75em 0 0.25em 1.25em;">
+<p style="margin: -0.85em 0 0.15em 1.5em;">
 <em>Start here to skip computationally intensive steps and jump to core
 analysis</em>
 </p>
@@ -265,39 +271,39 @@ analysis</em>
 </summary>
 
 - [Annotate dCas9
-  cassette](2.validations/2.8.POU5F1_Perturb-seq/2.8.1.annotate_dCas9_cassette.R)
+  cassette](2.validations/2.8.POU5F1_Perturb_seq/2.8.1.annotate_dCas9_cassette.R)
 - [Create reference genome sequences and annotations with the dCas9
-  cassette](2.validations/2.8.POU5F1_Perturb-seq/2.8.2.create_ref_genomes_with_dCas9_casette.sh)
+  cassette](2.validations/2.8.POU5F1_Perturb_seq/2.8.2.create_ref_genomes_with_dCas9_casette.sh)
 - [Download FASTQ files of Pertub-seq
-  data](2.validations/2.8.POU5F1_Perturb-seq/2.8.3.download_FASTQ.sh)
+  data](2.validations/2.8.POU5F1_Perturb_seq/2.8.3.download_FASTQ.sh)
 - [Map Perturb-seq reads using
-  CellRanger](2.validations/2.8.POU5F1_Perturb-seq/2.8.4.mapping.sh)
+  CellRanger](2.validations/2.8.POU5F1_Perturb_seq/2.8.4.mapping.sh)
   - [Mapping worker
-    script](2.validations/2.8.POU5F1_Perturb-seq/mapping_per_lane_and_genome.sh)
+    script](2.validations/2.8.POU5F1_Perturb_seq/mapping_per_lane_and_genome.sh)
 - [Species
-  demultiplexing](2.validations/2.8.POU5F1_Perturb-seq/2.8.5.species_demultiplexing.sh)
+  demultiplexing](2.validations/2.8.POU5F1_Perturb_seq/2.8.5.species_demultiplexing.sh)
   - [Species demultiplexing worker
-    script](2.validations/2.8.POU5F1_Perturb-seq/species_demultiplexing_per_lane_and_genome.sh)
+    script](2.validations/2.8.POU5F1_Perturb_seq/species_demultiplexing_per_lane_and_genome.sh)
 - [Identify the cells of each
-  species](2.validations/2.8.POU5F1_Perturb-seq/2.8.6.get_cells_per_species.R)
+  species](2.validations/2.8.POU5F1_Perturb_seq/2.8.6.get_cells_per_species.R)
 - [Individual
-  demultiplexing](2.validations/2.8.POU5F1_Perturb-seq/2.8.7.individual_demultiplexing.sh)
+  demultiplexing](2.validations/2.8.POU5F1_Perturb_seq/2.8.7.individual_demultiplexing.sh)
   - [Individual demultiplexing worker
-    script](2.validations/2.8.POU5F1_Perturb-seq/indiv_demultiplexing_per_lane_and_genome.sh)
+    script](2.validations/2.8.POU5F1_Perturb_seq/indiv_demultiplexing_per_lane_and_genome.sh)
 - [QC &
-  filtering](2.validations/2.8.POU5F1_Perturb-seq/2.8.8.QC_and_filtering.R)
+  filtering](2.validations/2.8.POU5F1_Perturb_seq/2.8.8.QC_and_filtering.R)
 
-<p style="margin: -0.75em 0 0.25em 1.25em;">
+<p style="margin: -0.85em 0 0.15em 1.5em;">
 <em>Start here to skip computationally intensive steps and jump to core
 analysis</em>
 </p>
 
 - [Stemness scores & knockdown
-  efficiencies](2.validations/2.8.POU5F1_Perturb-seq/2.8.9.stemness_scores_and_knockdown_efficiencies.R)
+  efficiencies](2.validations/2.8.POU5F1_Perturb_seq/2.8.9.stemness_scores_and_knockdown_efficiencies.R)
 - [DE
-  analysis](2.validations/2.8.POU5F1_Perturb-seq/2.8.10.DE_analysis.R)
+  analysis](2.validations/2.8.POU5F1_Perturb_seq/2.8.10.DE_analysis.R)
 - [Helper
-  functions](2.validations/2.8.POU5F1_Perturb-seq/helper_functions.R)
+  functions](2.validations/2.8.POU5F1_Perturb_seq/helper_functions.R)
 
 </details>
 
@@ -345,5 +351,46 @@ analysis</em>
 - [Module assignment, calculation of preservation scores and
   quantification of cross-species module conservation using
   CroCoNet](3.brain_dataset/3.3.CroCoNet_analysis/3.3.1.CroCoNet_analysis.R)
+
+</details>
+
+### 4. Figures and tables in the manuscript
+
+This directory contains all scripts required to reproduce the figures
+and tables featuring in the manuscript.
+
+<details>
+<summary>
+<strong>Main figures</strong>
+</summary>
+
+- [Figure 2](4.paper_figures_and_tables/figure2.R)
+- [Figure 3](4.paper_figures_and_tables/figure3.R)
+- [Figure 4](4.paper_figures_and_tables/figure4.R)
+- [Helper functions](4.paper_figures_and_tables/helper_functions.R)
+
+</details>
+<details>
+<summary>
+<strong>Supplementary figures</strong>
+</summary>
+
+- [Supplementary Figure S1](4.paper_figures_and_tables/suppl.figureS1.R)
+- [Supplementary Figure S2](4.paper_figures_and_tables/suppl.figureS2.R)
+- [Supplementary Figure S3](4.paper_figures_and_tables/suppl.figureS3.R)
+- [Supplementary Figure S4](4.paper_figures_and_tables/suppl.figureS4.R)
+- [Supplementary Figure S5](4.paper_figures_and_tables/suppl.figureS5.R)
+- [Supplementary Figure S6](4.paper_figures_and_tables/suppl.figureS6.R)
+- [Supplementary Figure S7](4.paper_figures_and_tables/suppl.figureS7.R)
+- [Supplementary Figure S8](4.paper_figures_and_tables/suppl.figureS8.R)
+- [Supplementary Figure S9](4.paper_figures_and_tables/suppl.figureS9.R)
+
+</details>
+<details>
+<summary>
+<strong>Supplementary tables</strong>
+</summary>
+
+- [Supplementary Tables 1-10](4.paper_figures_and_tables/suppl.tables.R)
 
 </details>
