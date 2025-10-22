@@ -365,30 +365,22 @@ percent_KD <- foreach(species = c("human", "cynomolgus"),
 saveRDS(percent_KD, here(wd, "percent_KD.rds"))
 
 # chose best gRNAs
-seu$gRNAs_of_interest_POU5F1 <- factor(case_when(seu$gRNA %in% c("macFas6_POU5F1_n1", "hg38_POU5F1_n2") ~ "best POU5F1\ngRNA pair",
-                                                 seu$perturbed_TF != "NT_control" ~ "other targeting\ngRNAs",
-                                                 T ~ "control"),
-                                       c("best POU5F1\ngRNA pair", "other targeting\ngRNAs", "control"))
+metadata <- seu@meta.data %>%
+
+  left_join(percent_KD %>% dplyr::select(species, perturbed_TF, gRNA, percent_KD)) %>% 
+  dplyr::mutate(gRNAs_of_interest = factor(case_when(gRNA %in% c("macFas6_POU5F1_n1", "hg38_POU5F1_n2") ~ "best POU5F1\ngRNA pair",
+                                                     perturbed_TF != "NT_control" ~ "other targeting\ngRNAs",
+                                                     T ~ "control"),
+                                           c("best POU5F1\ngRNA pair", "other targeting\ngRNAs", "control")))
+rownames(metadata) <- metadata$cell
+table(rownames(metadata) == colnames(seu))
+seu@meta.data <- metadata
 saveRDS(seu, here(wd, "seu.rds"))
 
 # UMAP on the integrated space, colored by POU5F1 expression and split by species
 png("figures/umap_pou5f1_per_spec_integrated.png", width = 1450, height = 600)
 print(plot_umap_split(seu, "POU5F1", "species", reduction = "umap_per_species", point_size = 1))
 dev.off()
-
-# UMAP on the integrated space, colored by batch and split by species
-png("figures/umap_pou5f1_gRNAs_per_spec_integrated.png", width = 1450, height = 600)
-print(plot_umap_split2(seu, "gRNAs_of_interest_POU5F1", "species",  c("best POU5F1\ngRNA pair" = "maroon", "other targeting\ngRNAs" = "grey40", "control" = "grey70"), "umap_per_species", point_size = 1, legend_title = ""))
-dev.off()
-
-
-
-# chose best gRNAs
-seu$gRNAs_of_interest <- factor(case_when(seu$gRNA %in% c("macFas6_POU5F1_n1", "hg38_POU5F1_n2") ~ "best POU5F1\ngRNA pair",
-                                          seu$perturbed_TF == "POU5F1" ~ "other POU5F1\ngRNAs",
-                                          T ~ "control"),
-                                c("best POU5F1\ngRNA pair", "other POU5F1\ngRNAs", "control"))
-saveRDS(seu, here(wd, "seu.rds"))
 
 # UMAP on the integrated space, highlighting the best POU5F1 gRNA pair and split by species
 png(here(wd, "figures/umap_pou5f1_gRNAs_per_spec_integrated.png"), width = 1450, height = 600)

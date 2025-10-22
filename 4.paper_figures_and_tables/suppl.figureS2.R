@@ -1,4 +1,4 @@
-here::i_am("scripts/4.paper_figures/suppl.figureS2.R")
+here::i_am("scripts/4.paper_figures_and_tables/suppl.figureS2.R")
 
 library(tidyverse)
 library(foreach)
@@ -9,8 +9,8 @@ library(patchwork)
 library(SCORPIUS)
 library(here)
 
-wd <- here("data/neural_differentiation_dataset/CroCoNet_analysis")
-fig_dir <- here("scripts/4.paper_figures/figures/")
+wd <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
+fig_dir <- here("data/paper_figures_and_tables/")
 
 
 ## Trajectory plots -----------------------------------------------------
@@ -60,7 +60,7 @@ traj_plot_replicate <- draw_trajectory_plot(low_dim_space,
   scale_y_continuous(expand = c(0.01,0.01))
 traj_plot_replicate
 
-ggsave(here(fig_dir, "trajectory_colored_by_replicate.png"), height = 5, width = 4.3)
+ggsave(here(fig_dir, "suppl.figureS2_trajectory.png"), height = 5, width = 4.3)
 
 
 ## Network inference summary --------------------------------------------
@@ -160,7 +160,7 @@ p4 <- ggplot(con, aes(x = connectivity, y = replicate, fill = replicate)) +
         axis.text = element_text(size = 12))
 
 p1 | p2 | p3 | p4
-ggsave(here(fig_dir, "network_inference_summary.png"), height = 4.7, width = 13)
+ggsave(here(fig_dir, "suppl.figureS2_network_inference_summary.png"), height = 4.7, width = 13)
 
 
 ## Biological variance distributions ---------------------------------------------------
@@ -202,7 +202,7 @@ biol_var_distr <- gene_var_fit %>%
   xlab("biological component\nof variance") +
   ylab("cumulative distribution")
 biol_var_distr
-ggsave(here(fig_dir, "biological_var_distr.png"), width = 3.5, height = 4.1)
+ggsave(here(fig_dir, "suppl.figureS2_biological_var_distr.png"), width = 3.5, height = 4.1)
 
 
 ## Regulator upsetR ----------------------------------------------------------
@@ -218,7 +218,7 @@ gene_var_fit_filt %>%
   dplyr::count(species)
 
 # plot
-pdf(here(fig_dir, "number_of_var_TRs.pdf"), width = 12, height = 9)
+pdf(here(fig_dir, "suppl.figureS2_number_of_var_TRs.pdf"), width = 12, height = 9)
 gene_var_fit_filt %>%
   dplyr::transmute(gene, species, value = 1) %>%
   pivot_wider(names_from = "species", values_from = "value", values_fill = 0) %>%

@@ -1,4 +1,4 @@
-here::i_am("scripts/4.paper_figures/suppl.figureS6.R")
+here::i_am("scripts/4.paper_figures_and_tables/suppl.figureS6.R")
 
 library(tidyverse)
 library(cowplot)
@@ -9,7 +9,7 @@ library(here)
 
 wd <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
 source(here("scripts/4.paper_figures/helper_functions.R"))
-fig_dir <- here("scripts/4.paper_figures/figures/")
+fig_dir <- here("data/paper_figures_and_tables/")
 
 
 ## Conserved and diverged modules -----------------------------------------

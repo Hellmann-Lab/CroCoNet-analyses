@@ -437,6 +437,8 @@ plotExprAlongPseudotimeAdjusted <- function(genes, sce, pseudotime_column = "pse
   
 }
 
+species_color_ramp <- scales::colour_ramp(c("#07beb8", "steelblue3", "#2E4172", "#256F5C", "forestgreen", "#83AA3E", "#FFB600",  "#E28100"))
+
 plotSmallTrees <- function(trees, species_colors = NULL, font_size = 16, tip_size = 1, branch_width = 0.4, ncol = NULL, out = "list") {
   
   if (inherits(trees, "phylo")) {

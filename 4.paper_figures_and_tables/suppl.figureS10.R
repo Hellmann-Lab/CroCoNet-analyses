@@ -1,14 +1,17 @@
+here::i_am("scripts/4.paper_figures_and_tables/suppl.figureS10.R")
+
 library(CroCoNet)
 library(tidyverse)
 library(patchwork)
 
+wd <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
 
 
-tree_stats_jk <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/03.CroCoNet_analysis/RDS/tree_stats_jk.rds")
+tree_stats_jk <- readRDS(here(wd, "tree_stats_jk.rds"))
 
-lm_overall <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/03.CroCoNet_analysis/RDS/lm_overall.rds")
+lm_overall <- readRDS(here(wd, "lm_overall.rds"))
 
-lm_human <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/03.CroCoNet_analysis/RDS/lm_human.rds")
+lm_human <- readRDS(here(wd, "lm_human.rds"))
 
 # raw plots
 residual_colors <- c("darkgreen","#2B823A","olivedrab3", "gold", "salmon1", "#AA4139", "red4")
@@ -37,4 +40,4 @@ p3 <- plotConservedDivergedTargets(arid1b, N = 2) +
 
 
 p2 + p1 + p3 + plot_layout(guides = "collect")
-ggsave("figures/suppl.figure7.png", width = 13.2, height = 4)
+ggsave(here("data/paper_figures_and_tables/suppl.figureS10.png"), width = 13.2, height = 4)

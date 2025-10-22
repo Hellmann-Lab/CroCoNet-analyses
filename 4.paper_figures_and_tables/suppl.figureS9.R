@@ -1,4 +1,4 @@
-here::i_am("scripts/4.paper_figures/suppl.figureS9.R")
+here::i_am("scripts/4.paper_figures_and_tables/suppl.figureS9.R")
 
 library(tidyverse)
 library(patchwork)
@@ -7,8 +7,8 @@ library(ggrepel)
 library(here)
 
 wd <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
-source(here("scripts/4.paper_figures/helper_functions.R"))
-fig_dir <- here("scripts/4.paper_figures/figures/")
+source(here("scripts/4.paper_figures_and_tables/helper_functions.R"))
+fig_dir <- here("data/paper_figures_and_tables/")
 
 
 ## Target contribution --------------------------------------------------

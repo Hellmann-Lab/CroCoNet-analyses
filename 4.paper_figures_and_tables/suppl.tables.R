@@ -28,6 +28,30 @@ round_numeric_columns <- function(df, signif_digits = 3) {
   
 }
 
+
+## Supplementary table 1: experiments and cell lines -----------------------------------------
+
+experiments_and_cell_lines <- data.frame(species = c(rep("human", 7),
+                                                     rep("gorilla", 3),
+                                                     rep("cynomolgus", 7)),
+                                         clone = c("H1c1", "H1c2", "H1c3", "H2c1", "H2c2", "H3c1", "H4c1",
+                                                   "G1c1", "G1c2", "G1c3",
+                                                   "C1c1", "C1c2", "C1c3", "C1c4", "C2c1", "C2c2", "C2c3"),
+                                         clone_lab_ID = c("11C2", "29B5", "29B5-39s", "12C2", "30B2", "1383D2", "63Ab2.2-02",
+                                                         "55C1", "55D1", "79A2",
+                                                         "39B2", "46B6", "82A3", "82A3-05s", "56A1", "56B1", "56B1-01s"),
+                                         individual = c(rep("cz", 3), rep("sp", 2), "jp_reference", "bv",
+                                                        rep("tano", 3),
+                                                        rep("QC-14K16S07", 4), rep("QC-16K16S07", 3))) %>% 
+  dplyr::mutate(scRNA_seq = ifelse(clone %in% c("H1c1", "H2c1", "H3c1", "G1c1", "G1c2", "C1c1", "C1c2", "C2c1", "C2c2"), "✔", NA),
+                ATAC_seq_iPSC = ifelse(clone %in% c("H1c2", "H2c1", "G1c2", "G1c3", "C1c1", "C1c3", "C2c1"), "✔", NA),
+                ATAC_seq_NPC = ifelse(clone %in% c("H1c2", "H2c1", "C1c1", "C2c1"), "✔", NA),
+                long_read_RNA_seq_iPSC = ifelse(clone %in% c("H2c1", "H2c2", "G1c1", "C1c1"), "✔", NA),
+                long_read_RNA_seq_NPC = ifelse(clone %in% c("H1c2", "G1c2", "C1c1", "C1c2"), "✔", NA),
+                Perturb_seq = ifelse(clone %in% c("H1c3", "H4c1", "C1c4", "C2c3"), "✔", NA))
+saveRDS(experiments_and_cell_lines, here(wd, "suppl.table1_experiments_and_cell_lines.rds"))
+
+
 ## Supplementary table 2: pruned modules - diff. data -----------------------------------------
 
 # load pruned modules
@@ -43,7 +67,7 @@ pruned_modules_diff_data <- readRDS(here("data/neural_differentiation_dataset/Cr
                 n_supporting_replicates,
                 supporting_replicates) %>% 
   round_numeric_columns()
-saveRDS(pruned_modules_diff_data, here(wd, "pruned_modules_diff_data.rds"))
+saveRDS(pruned_modules_diff_data, here(wd, "suppl.table2_pruned_modules_diff_data.rds"))
 
 
 ## Supplementary table 3: module properties - diff.data  ----------------------------------------
@@ -56,7 +80,8 @@ phastCons_regulators <- readRDS(here("data/validations/sequence_divergence/phast
   dplyr::transmute(regulator = gene_name, phastCons_primates = mean_phastCons)
 
 # mean expression
-mean_expr_regulators <- readRDS(here("data/validations/expression_pattern_divergence/mean_expr_regulators.rds"))
+mean_expr_regulators <- readRDS(here("data/validations/expression_pattern_divergence/mean_expr_regulators.rds")) %>% 
+  dplyr::rename(mean_expression = mean_expr)
 
 # expression pattern divergence
 expr_div_regulators <- readRDS(here("data/validations/expression_pattern_divergence/de_results.rds")) %>% 
@@ -136,7 +161,7 @@ module_properties_diff_data <- data.frame(regulator = regulators) %>%
   dplyr::relocate(human_diversity, .before = "residual_human") %>% 
   dplyr::relocate(gorilla_diversity, .before = "residual_gorilla") %>% 
   round_numeric_columns()
-saveRDS(module_properties_diff_data, here(wd, "module_properties_diff_data.rds"))
+saveRDS(module_properties_diff_data, here(wd, "suppl.table3_module_properties_diff_data.rds"))
                    
 
 ## Supplementary table 4: target contributions - diff.data -----------------------------------
@@ -153,135 +178,133 @@ target_contributions_diff_data <- readRDS(here("data/neural_differentiation_data
                    residual,
                    contribution) %>% 
   round_numeric_columns()
-saveRDS(target_contributions_diff_data, here(wd, "target_contributions_diff_data.rds"))
+saveRDS(target_contributions_diff_data, here(wd, "suppl.table4_target_contributions_diff_data.rds"))
 
 
-# Pruned modules MTG ------------------------------------------------------
+## Supplementary table 5: replicates - brain data ------------------------------------------
 
-consensus_network_mtg <- readRDS("/data/share/htp/hack_GRN/primate_MTG_network_analysis/RDS/consensus_network.rds")
-
-pruned_modules_mtg <- readRDS("/data/share/htp/hack_GRN/primate_MTG_network_analysis/RDS/pruned_modules.rds") %>% 
-  calculate_kIM(consensus_network_mtg) %>% 
-  dplyr::transmute(regulator,
-                   module_size,
-                   target,
-                   adj_regulator_target = signif(weight, digits = 3),
-                   kIM = signif(kIM, digits = 3),
-                   direction)
-saveRDS(pruned_modules_mtg, "RDS/pruned_modules_mtg.rds")
+replicates_brain_data <- readRDS(here("data/brain_dataset/processed_data/metadata_filt.rds")) %>% 
+  distinct(species, donor, replicate) %>% 
+  group_by(species) %>% 
+  dplyr::arrange(replicate, .by_group = TRUE) %>% 
+  ungroup() %>% 
+  dplyr::rename(replicate_ID_Jorstad_et_al = donor, replicate_ID_this_paper = replicate)
+saveRDS(replicates_brain_data, here(wd, "suppl.table5_replicates_brain_data.rds"))
 
 
-# Module properties MTG ---------------------------------------------------
+## Supplementary table 6: pruned modules - brain data ---------------------------------------
 
-regulators_mtg <- readRDS("~/hack_GRN/primate_MTG_network_analysis/RDS/regulators.rds")
+pruned_modules_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/pruned_modules.rds")) %>% 
+  dplyr::select(regulator,
+                module_size,
+                target,
+                adj_regulator_target = weight,
+                kIM,
+                direction) %>% 
+  round_numeric_columns()
+saveRDS(pruned_modules_brain_data, here(wd, "suppl.table6_pruned_modules_brain_data.rds"))
 
-connectivity_mtg <- data.frame(regulator = regulators_mtg,
-                               connectivity = strength(consensus_network_mtg, regulators_mtg))
-saveRDS(connectivity_mtg, "RDS/connectivity_mtg.rds")
 
-kIM_regulators_mtg <- readRDS("/data/share/htp/hack_GRN/primate_MTG_network_analysis/RDS/pruned_modules.rds") %>% 
+## Supplementary table 7: Module properties MTG ---------------------------------------------------
+
+# mean expression of regulators
+sce_brain_data <- readRDS(here("data/brain_dataset/processed_data/sce.rds"))
+mean_expr_brain_data <- data.frame(regulator = regulators_brain_data,
+                                   mean_expr = rowMeans(logcounts(sce_brain_data)[regulators_brain_data, ]))
+
+# connectivity
+regulators_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/regulators.rds"))
+
+consensus_network_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/consensus_network.rds"))
+
+connectivity_brain_data <- data.frame(regulator = regulators_brain_data,
+                                      overall_connectivity = strength(consensus_network_brain_data, regulators_brain_data))
+
+# mean regulator-target adjacency
+mean_adj_regulator_target_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/pruned_modules.rds")) %>% 
   group_by(regulator) %>% 
-  dplyr::summarize(mean_adj_regulator_target = mean(weight))
-saveRDS(kIM_regulators_mtg, "RDS/kIM_regulators_mtg.rds")
+  dplyr::summarize(mean_adj_regulator_target = mean(weight)) %>% 
+  ungroup()
 
-sce_mtg <- readRDS("~/hack_GRN/primate_MTG_network_analysis/RDS_signed_network/sce_all_spec.rds")
-mean_expr_mtg <- data.frame(regulator = regulators_mtg,
-                        mean_expr = rowMeans(logcounts(sce_mtg)[regulators_mtg, ]))
-saveRDS(mean_expr_mtg, "RDS/mean_expr_mtg.rds")
+# tree statistics
+tree_stats_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/tree_stats.rds")) %>% 
+  dplyr::select(regulator, module_size, total_tree_length, within_species_diversity, human_diversity, chimp_diversity, gorilla_diversity, rhesus_diversity)
 
-tree_stats <- readRDS("~/hack_GRN/primate_MTG_network_analysis/RDS/tree_stats.rds") %>% 
-  dplyr::select(regulator, module_size, total_tree_length, within_species_diversity, human_diversity, chimp_diversity, gorilla_diversity, rhesus_diversity, marmoset_diversity)
+# network conservation - overall
+module_conservation_overall_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/module_conservation_overall.rds")) %>% 
+  dplyr::transmute(regulator, residual_overall = residual, category_overall = conservation)
 
-module_conservation_overall_mtg <- readRDS("~/hack_GRN/primate_MTG_network_analysis/RDS/module_conservation_overall.rds") %>% 
-  dplyr::transmute(regulator, overall_residual = residual, overall_category = conservation)
-module_conservation_human_mtg <- readRDS("~/hack_GRN/primate_MTG_network_analysis/RDS/module_conservation_human.rds") %>% 
-  dplyr::transmute(regulator, human_monophyleticity = TRUE, human_subtree_length = human_to_other_subtree_length, human_residual = residual, human_category = conservation)
-module_conservation_chimp_mtg <- readRDS("~/hack_GRN/primate_MTG_network_analysis/RDS/module_conservation_chimp.rds") %>% 
-  dplyr::transmute(regulator, chimp_monophyleticity = TRUE, chimp_subtree_length = chimp_to_other_subtree_length, chimp_residual = residual, chimp_category = conservation)
-module_conservation_gorilla_mtg <- readRDS("~/hack_GRN/primate_MTG_network_analysis/RDS/module_conservation_gorilla.rds") %>% 
-  dplyr::transmute(regulator, gorilla_monophyleticity = TRUE, gorilla_subtree_length = gorilla_to_other_subtree_length, gorilla_residual = residual, gorilla_category = conservation)
-module_conservation_rhesus_mtg <- readRDS("~/hack_GRN/primate_MTG_network_analysis/RDS/module_conservation_rhesus.rds") %>% 
-  dplyr::transmute(regulator, rhesus_monophyleticity = TRUE, rhesus_subtree_length = rhesus_to_other_subtree_length, rhesus_residual = residual, rhesus_category = conservation)
-module_conservation_marmoset_mtg <- readRDS("~/hack_GRN/primate_MTG_network_analysis/RDS/module_conservation_marmoset.rds") %>% 
-  dplyr::transmute(regulator, marmoset_monophyleticity = TRUE, marmoset_subtree_length = marmoset_to_other_subtree_length, marmoset_residual = residual, marmoset_category = conservation)
+# network conservation - human lineage
+module_conservation_human_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/module_conservation_human.rds")) %>% 
+  dplyr::transmute(regulator, human_monophyleticity = TRUE, human_subtree_length, residual_human = residual, category_human = conservation)
 
-module_properties_mtg <- mean_expr_mtg %>% 
-  left_join(connectivity_mtg) %>% 
-  left_join(kIM_regulators_mtg) %>% 
-  left_join(tree_stats) %>% 
-  left_join(module_conservation_overall_mtg) %>% 
-  left_join(module_conservation_human_mtg) %>% 
-  left_join(module_conservation_chimp_mtg) %>% 
-  left_join(module_conservation_gorilla_mtg) %>% 
-  left_join(module_conservation_rhesus_mtg) %>% 
-  left_join(module_conservation_marmoset_mtg) %>% 
-  dplyr::transmute(regulator = as.character(regulator),
-                   mean_expr = signif(mean_expr, digits = 3),
-                   module_size = module_size, 
-                   overall_connectivity = signif(connectivity, digits = 3),
-                   mean_adj_regulator_target = signif(mean_adj_regulator_target, digits = 3),
-                   total_tree_length = signif(total_tree_length, digits = 3),
-                   within_species_diversity = signif(within_species_diversity, digits = 3),
-                   residual_overall = signif(overall_residual, digits = 3),
-                   category_overall = ifelse(is.na(overall_category), "removed", overall_category),
-                   human_monophyleticity = replace_na(human_monophyleticity, FALSE),
-                   human_subtree_length = signif(human_subtree_length, digits = 3),
-                   human_diversity = signif(human_diversity, digits = 3),
-                   residual_human = signif(human_residual, digits = 3),
-                   category_human = case_when(is.na(overall_category) ~ "removed",
-                                              !human_monophyleticity ~ "not_monophyletic",
-                                              TRUE ~ human_category),
-                   chimp_monophyleticity = replace_na(chimp_monophyleticity, FALSE),
-                   chimp_subtree_length = signif(chimp_subtree_length, digits = 3),
-                   chimp_diversity = signif(chimp_diversity, digits = 3),
-                   residual_chimp = signif(chimp_residual, digits = 3),
-                   category_chimp = case_when(is.na(overall_category) ~ "removed",
-                                              !chimp_monophyleticity ~ "not_monophyletic",
-                                              TRUE ~ chimp_category),
-                   gorilla_monophyleticity = replace_na(gorilla_monophyleticity, FALSE),
-                   gorilla_subtree_length = signif(gorilla_subtree_length, digits = 3),
-                   gorilla_diversity = signif(gorilla_diversity, digits = 3),
-                   residual_gorilla = signif(gorilla_residual, digits = 3),
-                   category_gorilla = case_when(is.na(overall_category) ~ "removed",
-                                                !gorilla_monophyleticity ~ "not_monophyletic",
-                                                TRUE ~ gorilla_category),
-                   rhesus_monophyleticity = replace_na(rhesus_monophyleticity, FALSE),
-                   rhesus_subtree_length = signif(rhesus_subtree_length, digits = 3),
-                   rhesus_diversity = signif(rhesus_diversity, digits = 3),
-                   residual_rhesus = signif(rhesus_residual, digits = 3),
-                   category_rhesus = case_when(is.na(overall_category) ~ "removed",
-                                                   !rhesus_monophyleticity ~ "not_monophyletic",
-                                                   TRUE ~ rhesus_category),
-                   marmoset_monophyleticity = replace_na(marmoset_monophyleticity, FALSE),
-                   marmoset_subtree_length = signif(marmoset_subtree_length, digits = 3),
-                   marmoset_diversity = signif(marmoset_diversity, digits = 3),
-                   residual_marmoset = signif(marmoset_residual, digits = 3),
-                   category_marmoset = case_when(is.na(overall_category) ~ "removed",
-                                              !marmoset_monophyleticity ~ "not_monophyletic",
-                                              TRUE ~ marmoset_category))
-saveRDS(module_properties_mtg, "RDS/module_properties_mtg.rds")
+# network conservation - chimp lineage
+module_conservation_chimp_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/module_conservation_chimp.rds")) %>% 
+  dplyr::transmute(regulator, chimp_monophyleticity = TRUE, chimp_subtree_length, residual_chimp = residual, category_chimp = conservation)
+
+# network conservation - gorilla lineage
+module_conservation_gorilla_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/module_conservation_gorilla.rds")) %>% 
+  dplyr::transmute(regulator, gorilla_monophyleticity = TRUE, gorilla_subtree_length, residual_gorilla = residual, category_gorilla = conservation)
+
+# network conservation - rhesus lineage
+module_conservation_rhesus_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/module_conservation_rhesus.rds")) %>% 
+  dplyr::transmute(regulator, rhesus_monophyleticity = TRUE, rhesus_subtree_length, residual_rhesus = residual, category_rhesus = conservation)
+
+# combine
+module_properties_brain_data <- data.frame(regulator = regulators_brain_data) %>% 
+  left_join(mean_expr_brain_data) %>% 
+  left_join(connectivity_brain_data) %>% 
+  left_join(mean_adj_regulator_target_brain_data) %>% 
+  left_join(tree_stats_brain_data) %>% 
+  left_join(module_conservation_overall_brain_data) %>% 
+  left_join(module_conservation_human_brain_data) %>% 
+  left_join(module_conservation_chimp_brain_data) %>% 
+  left_join(module_conservation_gorilla_brain_data) %>% 
+  left_join(module_conservation_rhesus_brain_data) %>% 
+  dplyr::mutate(category_overall = ifelse(is.na(category_overall), "removed", category_overall),
+                human_monophyleticity = replace_na(human_monophyleticity, FALSE),
+                category_human = case_when(is.na(category_overall) ~ "removed",
+                                          !human_monophyleticity ~ "not_monophyletic",
+                                          TRUE ~ category_human),
+                chimp_monophyleticity = replace_na(chimp_monophyleticity, FALSE),
+                category_chimp = case_when(is.na(category_overall) ~ "removed",
+                                          !chimp_monophyleticity ~ "not_monophyletic",
+                                          TRUE ~ category_chimp),
+                gorilla_monophyleticity = replace_na(gorilla_monophyleticity, FALSE),
+                category_gorilla = case_when(is.na(category_overall) ~ "removed",
+                                            !gorilla_monophyleticity ~ "not_monophyletic",
+                                            TRUE ~ category_gorilla),
+                rhesus_monophyleticity = replace_na(rhesus_monophyleticity, FALSE),
+                category_rhesus = case_when(is.na(category_overall) ~ "removed",
+                                               !rhesus_monophyleticity ~ "not_monophyletic",
+                                               TRUE ~ category_rhesus)) %>% 
+  dplyr::relocate(module_size, .before = "overall_connectivity") %>% 
+  dplyr::relocate(human_diversity, .before = "residual_human") %>% 
+  dplyr::relocate(chimp_diversity, .before = "residual_chimp") %>% 
+  dplyr::relocate(gorilla_diversity, .before = "residual_gorilla") %>% 
+  dplyr::relocate(rhesus_diversity, .before = "residual_rhesus") %>% 
+  round_numeric_columns()
+saveRDS(module_properties_brain_data, here(wd, "suppl.table7_module_properties_brain_data.rds"))
 
 
-# POU5F1 gRNAs ------------------------------------------------------------
+# Supplementary table 8: POU5F1 gRNAs ------------------------------------------------------------
 
-seu <- readRDS("/data/share/htp/perturb-seq/TF94_combined/additional_analysis/pou5f1_for_croconet/RDS/seu.rds")
+seu <- readRDS(here("data/validations/POU5F1_Perturb_seq_processed_data/seu.rds"))
 
 POU5F1_gRNAs <- seu@meta.data  %>% 
   dplyr::filter(perturbed_TF == "POU5F1") %>% 
-  dplyr::count(species, gRNA, logFC, adj.P.Val, percent_KD, gRNA_sequence) %>% 
+  dplyr::count(species, gRNA, percent_KD, gRNA_sequence) %>% 
   dplyr::transmute(species,
-                   gRNA_ID = factor(gRNA, c("hg38_POU5F1_n2", "hg38_POU5F1_n4", "hg38_POU5F1_n5", "hg38_POU5F1_n6", "macFas6_POU5F1_n1", "macFas6_POU5F1_n3", "macFas6_POU5F1_n7", "macFas6_POU5F1_n8", "macFas6_POU5F1_n10", "macFas6_POU5F1_n11")),
+                   gRNA_ID = factor(gRNA, c("hg38_POU5F1_n2", "hg38_POU5F1_n4", "hg38_POU5F1_n5", "hg38_POU5F1_n6", "hg38_POU5F1_n9", "macFas6_POU5F1_n1", "macFas6_POU5F1_n3", "macFas6_POU5F1_n7", "macFas6_POU5F1_n8", "macFas6_POU5F1_n10", "macFas6_POU5F1_n11")),
                    gRNA_sequence,
                    n_cells = n,
                    percent_KD_POU5F1 = signif(percent_KD, digits = 3),
-                   logFC_POU5F1 = signif(logFC, digits = 3),
-                   p_adj = signif(adj.P.Val, digits = 2),
                    best_gRNA_pair = gRNA %in% c("macFas6_POU5F1_n1", "hg38_POU5F1_n2")) %>% 
   arrange(gRNA_ID)
-saveRDS(POU5F1_gRNAs, "RDS/POU5F1_gRNAs.rds")
+saveRDS(POU5F1_gRNAs, here(wd, "suppl.table8_POU5F1_gRNAs.rds"))
 
 
-# Control gRNAs -----------------------------------------------------------
+# Supplementary table 9: Control gRNAs -----------------------------------------------------------
 
 control_gRNAs <- seu@meta.data  %>% 
   dplyr::filter(perturbed_TF == "NT_control") %>% 
@@ -293,12 +316,12 @@ control_gRNAs <- seu@meta.data  %>%
   arrange(species) %>% 
   group_by(species) %>% 
   arrange(gRNA_ID, .by_group = TRUE)
-saveRDS(control_gRNAs, "RDS/control_gRNAs.rds")
+saveRDS(control_gRNAs, here(wd, "suppl.table9_control_gRNAs.rds"))
 
 
-# Perturb-seq DE-DR results -----------------------------------------------
+# Supplementary table 19: POU5F1 perturbation outcome --------------------------------------------
 
-de_dr_results <- readRDS("/data/share/htp/perturb-seq/TF94_combined/additional_analysis/pou5f1_for_croconet/RDS/de_results.rds") %>% 
+de_dr_results <- readRDS(here("data/validations/POU5F1_Perturb_seq_DE_analysis/de_results.rds")) %>% 
   dplyr::mutate(contrast = case_when(contrast == "human" ~ "DE_human",
                                      contrast == "cynomolgus" ~ "DE_cynomolgus",
                                      contrast == "interaction" ~ "DR"),
@@ -306,50 +329,50 @@ de_dr_results <- readRDS("/data/share/htp/perturb-seq/TF94_combined/additional_a
   arrange(contrast) %>% 
   group_by(contrast) %>% 
   arrange(gene, .by_group = TRUE) %>% 
-  dplyr::transmute(contrast, gene,
-                   logFC = signif(logFC, digits = 3),
-                   CI.L = signif(CI.L, digits = 3),
-                   CI.R = signif(CI.R, digits = 3),
-                   AveExpr = signif(AveExpr, digits = 3),
-                   t = signif(t, digits = 3),
-                   P.Value = signif(P.Value, digits = 2),
-                   adj.P.Val = signif(adj.P.Val, digits = 2),
-                   B = signif(B, digits = 3))
-saveRDS(de_dr_results, "RDS/de_dr_results.rds")
+  round_numeric_columns()
+saveRDS(de_dr_results, here(wd, "suppl.table10_pou5f1_perturbation_outcome.rds"))
 
 
 # Write tables ------------------------------------------------------------
 
-col_df <- matrix(data = c("regulator", rep("sequence_properties", 3), rep("expression_properties", 5), rep("binding_site_properties",4), rep("network_properties", 3), rep("module_conservation_overall", 4), rep("module_conservation_human_lineage", 5), rep("module_conservation_gorilla_lineage", 5), rep("module_conservation_cynomolgus_lineage", 5), gsub("_overall|_human|_gorilla|_cynomolgus", "", colnames(module_properties))),
+col_df_table1 <- matrix(data = c(gsub("_iPSC|_NPC", "", colnames(experiments_and_cell_lines)), gsub("ATAC_seq_|long_read_RNA_seq_|Perturb_seq_", "", colnames(experiments_and_cell_lines))),
+                        nrow = 2, byrow = TRUE) %>% 
+  as.data.frame()
+
+col_df_table3 <- matrix(data = c("regulator", rep("sequence_properties", 3), rep("expression_properties", 6), rep("binding_site_properties", 5), rep("network_properties", 3), rep("module_conservation_overall", 4), rep("module_conservation_human_lineage", 5), rep("module_conservation_gorilla_lineage", 5), colnames(module_properties_diff_data)[1:17], gsub("_overall|_human|_gorilla|_cynomolgus", "", colnames(module_properties_diff_data)[18:32])),
                  nrow = 2, byrow = TRUE) %>% 
   as.data.frame()
 
-col_df_mtg <- matrix(data = c("regulator", "mean_expression", rep("network_properties", 3), rep("module_conservation_overall", 4), rep("module_conservation_human_lineage", 5), rep("module_conservation_chimp_lineage", 5), rep("module_conservation_gorilla_lineage", 5), rep("module_conservation_rhesus_lineage", 5), rep("module_conservation_marmoset_lineage", 5), gsub("_overall|_human|_chimp|_gorilla|_rhesus|_marmoset", "", colnames(module_properties_mtg))),
+col_df_table7 <- matrix(data = c("regulator", "mean_expression", rep("network_properties", 3), rep("module_conservation_overall", 4), rep("module_conservation_human_lineage", 5), rep("module_conservation_chimp_lineage", 5), rep("module_conservation_gorilla_lineage", 5), rep("module_conservation_rhesus_lineage", 5), gsub("_overall|_human|_chimp|_gorilla|_rhesus|_marmoset", "", colnames(module_properties_brain_data))),
                  nrow = 2, byrow = TRUE) %>% 
   as.data.frame()
 
 wb <- openxlsx::createWorkbook()
 
 openxlsx::addWorksheet(wb, 'Experiments and cell lines')
+openxlsx::writeData(wb, 'Experiments and cell lines', col_df_table1, colNames = F)
+openxlsx::writeData(wb, 'Experiments and cell lines', experiments_and_cell_lines,
+                    startRow = 3,
+                    colNames = F)
 
 openxlsx::addWorksheet(wb, 'Pruned modules-diff. data')
-openxlsx::writeData(wb,'Pruned modules-diff. data', pruned_modules, colNames = T)
+openxlsx::writeData(wb,'Pruned modules-diff. data', pruned_modules_diff_data, colNames = T)
 
 openxlsx::addWorksheet(wb, 'Module properties-diff. data')
-openxlsx::writeData(wb,'Module properties-diff. data', col_df, colNames = F)
-openxlsx::writeData(wb,'Module properties-diff. data', module_properties,
+openxlsx::writeData(wb,'Module properties-diff. data', col_df_table3, colNames = F)
+openxlsx::writeData(wb,'Module properties-diff. data', module_properties_diff_data,
                     startRow = 3,
                     colNames = F)
 
 openxlsx::addWorksheet(wb, 'Target contributions-diff. data')
-openxlsx::writeData(wb,'Target contributions-diff. data', target_contributions, colNames = T)
+openxlsx::writeData(wb,'Target contributions-diff. data', target_contributions_diff_data, colNames = T)
 
-openxlsx::addWorksheet(wb, 'Pruned modules-MTG data')
-openxlsx::writeData(wb,'Pruned modules-MTG data', pruned_modules_mtg, colNames = T)
+openxlsx::addWorksheet(wb, 'Pruned modules-brain data')
+openxlsx::writeData(wb,'Pruned modules-brain data', pruned_modules_brain_data, colNames = T)
 
-openxlsx::addWorksheet(wb, 'Module properties-MTG data')
-openxlsx::writeData(wb,'Module properties-MTG data', col_df_mtg, colNames = F)
-openxlsx::writeData(wb,'Module properties-MTG data', module_properties_mtg,
+openxlsx::addWorksheet(wb, 'Module properties-brain data')
+openxlsx::writeData(wb,'Module properties-brain data', col_df_table7, colNames = F)
+openxlsx::writeData(wb,'Module properties-brain data', module_properties_brain_data,
                     startRow = 3,
                     colNames = F)
 
@@ -362,13 +385,4 @@ openxlsx::writeData(wb,'Control gRNAs', control_gRNAs, colNames = T)
 openxlsx::addWorksheet(wb, 'POU5F1 perturbation outcome')
 openxlsx::writeData(wb,'POU5F1 perturbation outcome', de_dr_results, colNames = T)
 
-# # create a sheet in the workbook
-# openxlsx::addWorksheet(wb, 'module properties')
-# # add the data to the new sheet
-# openxlsx::writeData(wb,'module properties', col_df, colNames = F)
-# openxlsx::writeData(wb,'module properties', module_properties,
-#                     startRow = 3,
-#                     colNames = F)
-
-# saving the workbook
-openxlsx::saveWorkbook(wb, 'RDS/suppl_tables.xlsx', overwrite=T)
+openxlsx::saveWorkbook(wb, here(wd, 'suppl_tables.xlsx'), overwrite=T)

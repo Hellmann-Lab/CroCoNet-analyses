@@ -1,4 +1,4 @@
-here::i_am("scripts/4.paper_figures/suppl.figureS3.R")
+here::i_am("scripts/4.paper_figures_and_tables/suppl.figureS3.R")
 
 library(tidyverse)
 library(here)
@@ -173,4 +173,4 @@ lower_level
 
 plot_grid(upper_level, NULL,  lower_level, ncol = 1, rel_heights = c(1.3, 0.1, 1)) &
   theme(plot.background = element_rect(fill = "white", color = "transparent"))
-ggplot2::ggsave(here("data/paper_figures/suppl.figureS3.png"), width = 12.8, height = 8.2)
+ggplot2::ggsave(here("data/paper_figures_and_tables/suppl.figureS3.png"), width = 12.8, height = 8.2)

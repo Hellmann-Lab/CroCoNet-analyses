@@ -1,4 +1,4 @@
-here::i_am("scripts/4.paper_figures_and_tables/suppl.figureS5.R")
+here::i_am("scripts/1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.5.cor_kIM_VS_cor_adj.R")
 
 library(tidyverse)
 library(CroCoNet)
@@ -8,7 +8,7 @@ library(cowplot)
 library(here)
 
 wd <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
-fig_dir <- here("data/paper_figures_and_tables/")
+fig_dir <- here(wd, "figures/")
 
 
 
@@ -31,10 +31,27 @@ pres_stats_to_plot <- bind_rows(`actual modules` = pres_stats,
                 category_type = paste0(category, "_", module_type),
                 category = factor(category, c("within-\nspecies", "human VS\ngorilla", "great ape VS\ncynomolgus")))
 
+# colors per phylogenetic distance
 category_colors <- setNames(c("#08635C", "#018E85", "#4CBEB4", "#c08316", "#ebb24b", "#F1D38F"),
                             unique(pres_stats_to_plot$category_type))
 
-p1 <- pres_stats_to_plot %>% 
+# cor.kIM
+pres_stats_to_plot %>% 
+  ggplot(aes(y = category, x = cor_kIM, fill = category_type)) +
+  geom_boxplot(color = "grey20", linewidth = 0.1, outlier.alpha = 0.5, outlier.size = 0.2) +
+  theme_bw(base_size = 14) +
+  facet_grid(module_type~.) +
+  scale_fill_manual(values = category_colors, guide = "none") +
+  theme(axis.text.y = element_text(size = 13, color = "black"),
+        axis.title.y = element_blank(),
+        strip.text.y = element_text(size = 13.5, color = "black"),
+        axis.title.x = element_text(face = "italic")) +
+  xlab("cor.kIM") +
+  scale_y_discrete(limits = rev)
+ggsave(here(fig_dir, "cor_kIM_per_phylogenetic_distance.png"), width = 6, height = 6)
+
+# cor.adj
+pres_stats_to_plot %>% 
   ggplot(aes(y = category, x = cor_adj, fill = category_type)) +
   geom_boxplot(color = "grey20", linewidth = 0.1, outlier.alpha = 0.5, outlier.size = 0.2) +
   theme_bw(base_size = 14) +
@@ -46,7 +63,7 @@ p1 <- pres_stats_to_plot %>%
         axis.title.x = element_text(face = "italic")) +
   xlab("cor.adj") +
   scale_y_discrete(limits = rev)
-p1
+ggsave(here(fig_dir, "cor_adj_per_phylogenetic_distance.png"), width = 6, height = 6)
 
 
 ## Preservation within and across species cor.kIM Vs cor.adj -------------------------
@@ -90,7 +107,7 @@ min_score <- min(c(combined_pres_stats$within_species, combined_pres_stats$cross
 max_score <- max(c(combined_pres_stats$within_species, combined_pres_stats$cross_species))
 
 # scatterplot of cross-species VS within-species scores
-p2 <- ggplot2::ggplot(combined_pres_stats, ggplot2::aes(x = .data[["within_species"]], y = .data[["cross_species"]])) +
+ggplot2::ggplot(combined_pres_stats, ggplot2::aes(x = .data[["within_species"]], y = .data[["cross_species"]])) +
   ggplot2::xlim(min_score, max_score) +
   ggplot2::ylim(min_score, max_score) +
   ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey30") +
@@ -101,10 +118,8 @@ p2 <- ggplot2::ggplot(combined_pres_stats, ggplot2::aes(x = .data[["within_speci
   ggplot2::scale_color_manual(values = c("#018E85", "red3", "#ebb24b"), guide = "none") +
   ggplot2::facet_grid(.data[["statistic"]] ~ .data[["species_compared"]]) +
   ggplot2::xlab("within-species preservation score") +
-  ggplot2::ylab("cross-species preservation score") +
-  theme(strip.background.y = element_blank(),
-        strip.text.y = element_blank())
-p2
+  ggplot2::ylab("cross-species preservation score")
+ggsave(here(fig_dir, "pres_within_across_species_cor_adj_vs_cor_kIM.png"), width = 10, height = 6)
 
 
 ## Random and actual tree stats cor.kIM VS cor.adj -------------------------
@@ -123,7 +138,7 @@ randomVSactual_cor_adj <- bind_rows("actual\nmodule" = tree_stats_cor_adj,
                                      "actual\nmodule,\nremoved",
                                      `module set`)) 
 
-p3 <- bind_rows(cor_kIM = randomVSactual,
+bind_rows(cor_kIM = randomVSactual,
                 cor_adj = randomVSactual_cor_adj,
                 .id = "statistic") %>%
   dplyr::mutate(statistic = factor(statistic, c("cor_kIM", "cor_adj"))) %>% 
@@ -144,11 +159,9 @@ p3 <- bind_rows(cor_kIM = randomVSactual,
   guides(color = guide_legend(override.aes = list(size = 3))) +
   theme(legend.title = element_blank(),
         legend.margin = margin(l = 0),
-        legend.key.spacing.y = unit(0.25, "cm"),
-        strip.background.y = element_blank(),
-        strip.text.y = element_blank()) +
+        legend.key.spacing.y = unit(0.25, "cm")) +
   facet_grid(statistic ~ .)
-p3
+ggsave(here(fig_dir, "tree_stats_cor_adj_vs_cor_kIM.png"), width = 5.8, height = 6)
 
 
 ## Quantitative comparison cor.kIM VS cor.adj -------------------------------------------
@@ -163,7 +176,7 @@ random_vs_actual_pres <- dplyr::bind_rows("actual_module" = pres_stats,
   dplyr::mutate(actual_random_diff = actual_module - random_module,
                 statistic = factor(gsub("_", ".", statistic),  c("cor.kIM", "cor.adj")))
 
-p4 <- random_vs_actual_pres %>% 
+p1 <- random_vs_actual_pres %>% 
   ggplot(aes(x = statistic, y = actual_random_diff, fill = statistic)) +
   geom_boxplot(color = "grey20", linewidth = 0.1, outlier.alpha = 0.5, outlier.size = 0.2) +
   theme_bw(base_size = 14) +
@@ -173,7 +186,7 @@ p4 <- random_vs_actual_pres %>%
   ylab(expression(Delta * ~preservation~score[~actual - random])) +
   geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
-p4
+p1
 
 # phylogenetic distances
 tree <- readRDS(here(wd, "tree.rds"))
@@ -198,7 +211,7 @@ pres_stats_to_plot <- pres_stats %>%
   dplyr::summarize(corr_pres_phyl = cor(top_dist, phylo_dist, method = "pearson"))
 
 # compare phylogenetic information
-p5 <- pres_stats_to_plot %>% 
+p2 <- pres_stats_to_plot %>% 
   dplyr::mutate(statistic = factor(gsub("_", ".", statistic),  c("cor.kIM", "cor.adj"))) %>% 
   ggplot(aes(x = statistic, y = corr_pres_phyl , fill = statistic)) +
   geom_boxplot(color = "grey20", linewidth = 0.1, outlier.alpha = 0.5, outlier.size = 0.2) +
@@ -209,10 +222,10 @@ p5 <- pres_stats_to_plot %>%
   ylab(expression(-italic(r)[preservation~score * ", " * phylogenetic~distance])) +
   geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
-p5
+p2
 
 # compare the total tree length / within-species diversity ratio (the higher this ratio, the lower the contribution of the confounding factors)
-p6 <- bind_rows(cor_kIM = tree_stats,
+p3 <- bind_rows(cor_kIM = tree_stats,
                 cor_adj = tree_stats_cor_adj,
                 .id = "statistic") %>% 
   dplyr::mutate(within_total = total_tree_length / within_species_diversity,
@@ -226,14 +239,7 @@ p6 <- bind_rows(cor_kIM = tree_stats,
   ylab(expression(frac("total tree length", "within-species diversity"))) +
   geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
-p6
+p3
 
-
-## Combine --------------------------------------------------------------
-
-lower_level <- plot_spacer() + p2 + p3 + plot_layout(widths = c(0.25, 3, 1)) & theme(plot.margin = margin(0, 5.5, 5.5, 5.5))
-upper_level <- p1 + p4 + p5 + p6 + plot_layout(ncol = 4)
-
-plot_grid(upper_level, 
-          lower_level, ncol = 1, rel_heights = c(1, 1.35))
-ggplot2::ggsave(here(fig_dir, "suppl.figureS5.png"), width = 15, height = 9.8, dpi = 600)
+p1 + p2 + p3
+ggsave(here(fig_dir, "cor_adj_vs_cor_kIM.png"), width = 10, height = 3.5)

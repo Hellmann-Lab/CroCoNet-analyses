@@ -1,4 +1,4 @@
-here::i_am("scripts/4.paper_figures/figure4.R")
+here::i_am("scripts/4.paper_figures_and_tables/figure4.R")
 
 library(tidyverse)
 library(SingleCellExperiment)
@@ -13,7 +13,7 @@ library(RColorBrewer)
 library(cowplot)
 library(here)
 
-fig_dir <- here("data/paper_figures/")
+fig_dir <- here("data/paper_figures_and_tables/")
 
 
 ## POU5F1 target expression ---------------------------------------------
@@ -29,7 +29,7 @@ spec_colors <- setNames(c("#8dc238", "#2292c4", "#aa38d8"),
 sce <- readRDS(here("data/neural_differentiation_dataset/processed_data/sce.rds"))
 
 # load helper functions
-source(here("scripts/4.paper_figures/helper_functions.R"))
+source(here("scripts/4.paper_figures_and_tables/helper_functions.R"))
 
 # get the top 2 most diverge targets of POU5F1
 target_contributions <- readRDS(here("data/neural_differentiation_dataset/CroCoNet_analysis/target_contributions_overall.rds"))
@@ -45,21 +45,21 @@ p1 <- plotExprAlongPseudotime2(c("POU5F1", top2_diverged_targets), sce, species_
 p1
 
 
-## LTR7 validation, all-in-one ------------------------------------------------------
+## LTR7 enrichment near POU5F1 module members ------------------------------------------------------
 
 # load gene-LTR7 element associations
-ltr7_near_pou5f1_module_members <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/LTR7_elements/RDS/ltr7_near_pou5f1_module_members.rds")
+ltr7_near_pou5f1_module_members <- readRDS(here("data/validations/POU5F1_LTR7_enrichment/LTR7_near_POU5F1_module_members.rds"))
 
+# plot the fraction of genes with nearby LTR7 element(s) in the POU5F1 module and across the rest of the genes
 p2 <- ltr7_near_pou5f1_module_members %>% 
-  group_by(is_pou5f1_module_member) %>% 
+  group_by(pou5f1_module_member) %>% 
   dplyr::count(ltr7_type) %>% 
   dplyr::mutate(frac = n / sum(n)) %>% 
   ungroup() %>% 
   dplyr::filter(ltr7_type != "no_ltr7") %>% 
-  dplyr::mutate(is_pou5f1_module_member = factor(is_pou5f1_module_member, levels = c("POU5F1\nmodule", "other")),
-                ltr7_type = ifelse(ltr7_type %in% c('ltr7_pou5f1_ape_specific', 'ltr7_pou5f1_human_specific'), "ltr7_pou5f1_lineage_specific", ltr7_type),
-                ltr7_type = factor(ltr7_type, levels = c("ltr7_no_pou5f1", "ltr7_pou5f1_cyno_ortholog", 'ltr7_pou5f1_lineage_specific'))) %>%
-  ggplot(aes(x = is_pou5f1_module_member,  y = frac, fill = ltr7_type)) +
+  dplyr::mutate( ltr7_type = ifelse(ltr7_type %in% c('ltr7_pou5f1_ape_specific', 'ltr7_pou5f1_human_specific'), "ltr7_pou5f1_lineage_specific", ltr7_type),
+                 ltr7_type = factor(ltr7_type, levels = c("ltr7_no_pou5f1", "ltr7_pou5f1_cyno_ortholog", 'ltr7_pou5f1_lineage_specific'))) %>%
+  ggplot(aes(x = pou5f1_module_member,  y = frac, fill = ltr7_type)) +
   geom_bar(stat = "identity") +
   theme_bw(base_size = 13) +
   scale_fill_manual(values = c("grey90", "darkslategray3", "#488B9D"), labels = c("not bound by POU5F1", "bound by POU5F1,\nhas ortholog in cynomolgus", "bound by POU5F1,\nonly present in apes"), name = "type of LTR7 element") +
@@ -67,21 +67,23 @@ p2 <- ltr7_near_pou5f1_module_members %>%
   ylab("fraction of genes with\nassociated LTR7 element(s)") +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(size = 13, color = "black"),
-        legend.text = element_text(size = 11.5, lineheight = 0.7, margin = margin(t = 0.8, b = 0.8)),
-        legend.key.height = unit(1, 'cm'),
-        legend.position = "none")
+        legend.position = "none") +
+  scale_x_discrete(limits = c(TRUE, FALSE), breaks = c(TRUE, FALSE), labels = c("POU5F1 module", "other"))
 p2
 
 # test enrichment of LTR7 elements
+ltr7_near_pou5f1_module_members <- ltr7_near_pou5f1_module_members %>% 
+  dplyr::mutate(pou5f1_module_member = factor(ifelse(pou5f1_module_member, "yes", "no"), c("yes", "no")))
+
 df1 <- ltr7_near_pou5f1_module_members %>% 
   dplyr::mutate(ltr7 = ifelse(ltr7_type == "no_ltr7", "no", "yes")) %>% 
-  group_by(is_pou5f1_module_member) %>% 
+  group_by(pou5f1_module_member) %>% 
   dplyr::count(ltr7)
 
 table1 <- df1 %>% 
   pivot_wider(names_from = "ltr7", values_from = "n") %>% 
-  arrange(desc(is_pou5f1_module_member)) %>% 
-  column_to_rownames("is_pou5f1_module_member") %>% 
+  arrange(desc(pou5f1_module_member)) %>% 
+  column_to_rownames("pou5f1_module_member") %>% 
   as.matrix()
 
 fisher_test_result <- fisher.test(table1)
@@ -90,13 +92,13 @@ fisher_test_result
 # test enrichment of POU5F1-bound LTR7 elements
 df2 <- ltr7_near_pou5f1_module_members %>% 
   dplyr::mutate(ltr7 = ifelse(ltr7_type %in% c("no_ltr7", "ltr7_no_pou5f1"), "no", "yes")) %>% 
-  group_by(is_pou5f1_module_member) %>% 
+  group_by(pou5f1_module_member) %>% 
   dplyr::count(ltr7)
 
 table2 <- df2 %>% 
   pivot_wider(names_from = "ltr7", values_from = "n") %>% 
-  arrange(desc(is_pou5f1_module_member)) %>% 
-  column_to_rownames("is_pou5f1_module_member") %>% 
+  arrange(desc(pou5f1_module_member)) %>% 
+  column_to_rownames("pou5f1_module_member") %>% 
   as.matrix()
 
 fisher_test_result <- fisher.test(table2)
@@ -105,13 +107,13 @@ fisher_test_result
 # test enrichment of POU5F1-bound LTR7 elements without a cynomolgus ortholog
 df3 <- ltr7_near_pou5f1_module_members %>% 
   dplyr::mutate(ltr7 = ifelse(ltr7_type %in% c("no_ltr7", "ltr7_no_pou5f1", "ltr7_pou5f1_cyno_ortholog"), "no", "yes")) %>% 
-  group_by(is_pou5f1_module_member) %>% 
+  group_by(pou5f1_module_member) %>% 
   dplyr::count(ltr7)
 
 table3 <- df3 %>% 
   pivot_wider(names_from = "ltr7", values_from = "n") %>% 
-  arrange(desc(is_pou5f1_module_member)) %>% 
-  column_to_rownames("is_pou5f1_module_member") %>% 
+  arrange(desc(pou5f1_module_member)) %>% 
+  column_to_rownames("pou5f1_module_member") %>% 
   as.matrix()
 
 fisher_test_result <- fisher.test(table3)
@@ -141,7 +143,7 @@ p5 <- plot_umap_split(seu, "stemness_score", "species", stemness_colors, "umap_p
         plot.margin = margin(t = 0)) +
   xlab("UMAP 1")
 
-ggsave(here(fig_dir, "figure4_umaps.png"), 
+ggsave(here(fig_dir, "figure4_UMAPs.png"), 
        p3 / p4 / p5 & theme(legend.justification = "left"),
        width = 16, height = 12.5, dpi = 600)
 
@@ -182,7 +184,6 @@ p8 <- plot_POU5F1_SPP1_expr(sce_downsampled)
 p8
 
 
-
 ## Combine plots --------------------------------------------------------
 
 bottom <- wrap_plots(p2,
@@ -197,6 +198,6 @@ bottom <- wrap_plots(p2,
 top <- plot_grid(NULL, p1, NULL, ncol = 3, rel_widths = c(0.0832, 0.8, 1.252)) &
   theme(plot.background = element_rect(fill = "white", color = "transparent"))
 
-ggplot2::ggsave(here(fig_dir, "figure4.png"), 
+ggsave(here(fig_dir, "figure4_expr_LTR7_DE_results.png"), 
        plot_grid(top, bottom, ncol = 1, rel_heights = c(1, 2.1)), 
        width = 13, height = 10.85)

@@ -1,4 +1,4 @@
-here::i_am("scripts/2.validations/2.6.POU5F1_ChIP_seq/2.6.8.calculate_enrichment_for_POU5F1_module.R")
+here::i_am("scripts/2.validations/2.6.POU5F1_ChIP_seq/2.6.8.calculate_enrichment_near_POU5F1_module_members.R")
 
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 library(ChIPseeker)

@@ -41,7 +41,6 @@ n_act_targets <- pruned_modules_filt %>%
   dplyr::count(regulator) %>%
   deframe()
 
-set.seed(0)
 random_modules_filt <- random_modules %>%
   dplyr::mutate(n_activated_targets = n_act_targets[regulator]) %>%
   group_by(regulator) %>%
@@ -52,6 +51,9 @@ random_modules_filt <- random_modules %>%
 module_list <- list(initial = initial_modules_filt,
                     pruned = pruned_modules_filt,
                     random = random_modules_filt)
+
+# module list
+module_list <- list(random = random_modules_filt)
 
 # formatting
 module_list <- lapply(module_list, function(modules) {

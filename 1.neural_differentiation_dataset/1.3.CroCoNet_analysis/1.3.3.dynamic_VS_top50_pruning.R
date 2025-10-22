@@ -1,4 +1,4 @@
-here::i_am("scripts/4.paper_figures_and_tables/suppl.figureS4.R")
+here::i_am("scripts/1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.3.dynamic_VS_top50_pruning.R")
 
 library(tidyverse)
 library(ggtext)
@@ -11,7 +11,7 @@ library(ggsignif)
 library(ggtree)
 
 wd <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
-fig_dir <- here("data/paper_figures_and_tables/")
+fig_dir <- here(wd, "figures/")
 
 
 ## cor.kIM distributions top50 ---------------------------------------------------
@@ -41,7 +41,7 @@ category_colors <- setNames(c("#08635C", "#018E85", "#4CBEB4", "#c08316", "#ebb2
                             unique(pres_stats_to_plot$category_type))
 
 # plot preservation score distribution per divergence time, for both the actual and the random modules
-p1 <- pres_stats_to_plot %>% 
+pres_stats_to_plot %>% 
   ggplot(aes(y = category, x = cor_kIM, fill = category_type)) +
   geom_boxplot(color = "grey20", linewidth = 0.1, outlier.alpha = 0.5, outlier.size = 0.2) +
   theme_bw(base_size = 14) +
@@ -53,10 +53,10 @@ p1 <- pres_stats_to_plot %>%
         axis.title.x = element_text(face = "italic")) +
   xlab("cor.kIM") +
   scale_y_discrete(limits = rev)
-p1
+ggsave(here(fig_dir, "cor_kIM_per_phylogenetic_distance_top50.png"), width = 6, height = 6)
 
 
-## Preservation within and across species dynamic VS top50 -------------------------
+## cor.kIM across-species and within-species dynamic VS top50 -------------------------
 
 # tree statistics (dynamic)
 tree_stats <- readRDS(here(wd, "tree_stats.rds"))
@@ -73,18 +73,18 @@ regulators_to_remove <- setdiff(tree_stats$regulator, tree_stats_filt$regulator)
 regulators_to_remove_top50 <- setdiff(tree_stats_top50$regulator, tree_stats_filt_top50$regulator)
 
 # data wrangling
-combined_pres_stats <-  dplyr::bind_rows("dynamic\npruning" = dplyr::bind_rows("actual module" = pres_stats,
+combined_pres_stats <-  dplyr::bind_rows("dynamic pruning" = dplyr::bind_rows("actual module" = pres_stats,
                                                                     "random module" = random_pres_stats,
                                                                     .id = "module_set"),
-                                         "top50\npruning"= dplyr::bind_rows("actual module" = pres_stats_top50,
+                                         "top50 pruning"= dplyr::bind_rows("actual module" = pres_stats_top50,
                                                                     "random module" = random_pres_stats_top50,
                                                                     .id = "module_set"),
                                          .id = "pruning_method") %>% 
   dplyr::group_by(dplyr::across(dplyr::any_of(c("module_set", "regulator", "pruning_method")))) %>%
   dplyr::filter(sum(is.na(.data[["cor_kIM"]])) == 0) %>%
   dplyr::ungroup() %>% 
-  dplyr::mutate(module_set = ifelse((regulator %in% regulators_to_remove & module_set == "actual module" & pruning_method == "dynamic\npruning") | 
-                                      (regulator %in% regulators_to_remove_top50 & module_set == "actual module" & pruning_method == "top50\npruning"),
+  dplyr::mutate(module_set = ifelse((regulator %in% regulators_to_remove & module_set == "actual module" & pruning_method == "dynamic pruning") | 
+                                      (regulator %in% regulators_to_remove_top50 & module_set == "actual module" & pruning_method == "top50 pruning"),
                                     "actual module,\nremoved",
                                     module_set)) %>% 
   dplyr::mutate(category = factor(ifelse(.data[["species1"]] == .data[["species2"]], "within_species", "cross_species"), c("within_species", "cross_species"))) %>%
@@ -99,7 +99,7 @@ min_score <- min(c(combined_pres_stats$within_species, combined_pres_stats$cross
 max_score <- max(c(combined_pres_stats$within_species, combined_pres_stats$cross_species))
 
 # scatterplot of cross-species VS within-species scores
-p2 <- ggplot(combined_pres_stats, aes(x = .data[["within_species"]], y = .data[["cross_species"]])) +
+ggplot(combined_pres_stats, aes(x = .data[["within_species"]], y = .data[["cross_species"]])) +
   xlim(min_score, max_score) +
   ylim(min_score, max_score) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey30") +
@@ -108,10 +108,8 @@ p2 <- ggplot(combined_pres_stats, aes(x = .data[["within_species"]], y = .data[[
   scale_color_manual(values = c("#018E85", "red3", "#ebb24b"), guide = "none") +
   facet_grid(.data[["pruning_method"]] ~ .data[["species_compared"]]) +
   xlab(expression(italic(cor.kIM)["within" * "-" * "species"])) +
-  ylab(expression(italic(cor.kIM)["cross" * "-" * "species"])) +
-  theme(strip.background.y = element_blank(),
-        strip.text.y = element_blank())
-p2
+  ylab(expression(italic(cor.kIM)["cross" * "-" * "species"]))
+ggsave(here(fig_dir, "pres_within_across_species_dynamic_vs_top50.png"), width = 10, height = 6)
 
 
 ## Random and actual tree stats dynamic VS top 50 -------------------------
@@ -130,9 +128,9 @@ randomVSactual_top50 <- bind_rows("actual\nmodule" = tree_stats_top50,
                                      "actual\nmodule,\nremoved",
                                      `module set`)) 
 
-p3 <- bind_rows(dynamic = randomVSactual,
-                top50 = randomVSactual_top50,
-                .id = "pruning_method") %>%
+bind_rows("dynamic pruning" = randomVSactual,
+          "top50 pruning" = randomVSactual_top50,
+          .id = "pruning_method") %>%
   dplyr::rename(module_set = `module set`) %>% 
   ggplot(aes(x = within_species_diversity, y = total_tree_length, color = module_set)) +
   geom_errorbar(aes(xmin = lwr_within_species_diversity, xmax = upr_within_species_diversity, color = module_set), size = 0.2, alpha = 0.7, show.legend = FALSE) %>%  partition(vars(module_set)) * (blend("lighten") + blend("multiply", alpha = 0.5)) +
@@ -145,11 +143,9 @@ p3 <- bind_rows(dynamic = randomVSactual,
   guides(color = guide_legend(override.aes = list(size = 3))) +
   theme(legend.title = element_blank(),
         legend.margin = margin(l = 0),
-        legend.key.spacing.y = unit(0.25, "cm"),
-        strip.background.y = element_blank(),
-        strip.text.y = element_blank()) +
+        legend.key.spacing.y = unit(0.25, "cm")) +
   facet_grid(pruning_method ~ .)
-p3
+ggsave(here(fig_dir, "tree_stats_dynamic_vs_top50.png"), width = 5.8, height = 6)
 
 
 ## Quantitative comparison dynamic VS top50 -------------------------------------------
@@ -166,7 +162,7 @@ random_vs_actual_pres <- dplyr::bind_rows("dynamic\npruning"= dplyr::bind_rows("
   pivot_wider(names_from = "module_set", values_from = "cor_kIM") %>% 
   dplyr::mutate(actual_random_diff = `actual module` - `random module`)
 
-p4 <- random_vs_actual_pres %>% 
+p1 <- random_vs_actual_pres %>% 
   ggplot(aes(x = pruning_method, y = actual_random_diff, fill = pruning_method)) +
   geom_boxplot(color = "grey20", linewidth = 0.1, outlier.alpha = 0.5, outlier.size = 0.2) +
   theme_bw(base_size = 14) +
@@ -176,7 +172,7 @@ p4 <- random_vs_actual_pres %>%
   ylab(expression(Delta * ~italic(cor.kIM)[actual - random])) +
   geom_signif(comparisons = list(c("dynamic\npruning", "top50\npruning")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
-p4
+p1
 
 # phylogenetic distances
 tree <- readRDS(here(wd, "tree.rds"))
@@ -200,7 +196,7 @@ pres_vs_phyl <- dplyr::bind_rows("dynamic\npruning" = pres_stats,
   group_by(regulator, pruning_method) %>% 
   dplyr::summarize(corr_pres_phyl = cor(cor_kIM, phylo_dist, method = "pearson"))
 
-p5 <- pres_vs_phyl %>% 
+p2 <- pres_vs_phyl %>% 
   ggplot(aes(x = pruning_method, y = -corr_pres_phyl , fill = pruning_method)) +
   geom_boxplot(color = "grey20", linewidth = 0.1, outlier.alpha = 0.5, outlier.size = 0.2) +
   theme_bw(base_size = 14) +
@@ -210,10 +206,10 @@ p5 <- pres_vs_phyl %>%
   ylab(expression(-italic(r)[italic(cor.kIM) * ", " * phylogenetic~distance])) +
   geom_signif(comparisons = list(c("dynamic\npruning", "top50\npruning")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
-p5
+p2
 
-# compare the total tree length / within-species diversity ratio (the higher this ratio, the lower the contribution of the confounding factors)
-p6 <- bind_rows("dynamic\npruning" = tree_stats,
+# plot the total-tree length / within-species diversity ratio (the higher this ratio, the lower the contribution of the confounding factors)
+p3 <- bind_rows("dynamic\npruning" = tree_stats,
                 "top50\npruning" = tree_stats_top50,
                 .id = "pruning_method") %>% 
   dplyr::mutate(within_total = total_tree_length / within_species_diversity) %>% 
@@ -226,7 +222,11 @@ p6 <- bind_rows("dynamic\npruning" = tree_stats,
   ylab(expression(frac("total tree length", "within-species diversity"))) +
   geom_signif(comparisons = list(c("dynamic\npruning", "top50\npruning")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
-p6
+p3
+
+p1 + p2 + p3
+ggsave(here(fig_dir, "dynamic_vs_top50.png"), width = 10, height = 3.5)
+
 
 ## Conservation ranking dynamic VS top50 ------------------------------------------------------------
 
@@ -252,7 +252,7 @@ module_conservation_overall_top50 %>%
   dplyr::filter(regulator %in% cons_modules)
 
 # plot conservation ranking
-p7 <- module_conservation_overall %>%
+p4 <- module_conservation_overall %>%
   dplyr::mutate(size = ifelse(regulator == "HOXA2", "HOXA2", conservation)) %>% 
   ggplot(aes(x = within_species_diversity, y = total_tree_length)) +
   geom_line(aes(y = fit), color = "grey30", linewidth = 0.5) +
@@ -272,7 +272,7 @@ p7 <- module_conservation_overall %>%
   labs(title = "dynamic pruning", subtitle = paste0('# of modules passing robustness filter: ', nrow(module_conservation_overall)))+
   theme(plot.title = element_text(color = "royalblue3"))
 
-p8 <- module_conservation_overall_top50 %>%
+p5 <- module_conservation_overall_top50 %>%
   dplyr::mutate(size = ifelse(regulator == "HOXA2", "HOXA2", conservation)) %>% 
   ggplot(aes(x = within_species_diversity, y = total_tree_length)) +
   geom_line(aes(y = fit), color = "grey30", linewidth = 0.5) +
@@ -292,27 +292,8 @@ p8 <- module_conservation_overall_top50 %>%
   labs(title = "top50 pruning", subtitle = paste0('# of modules passing robustness filter: ', nrow(module_conservation_overall_top50))) +
   theme(plot.title = element_text(color = "steelblue1"))
 
-wrap_plots(p7, p8, guides = "collect") & theme(legend.position = "bottom", legend.direction = "horizontal", legend.justification = "center")
-
-
-## Combine --------------------------------------------------------------
-
-upper_level <- plot_grid(p3, p6, p7, p8, ncol = 4, axis = "tb", align = "h", rel_widths = c(1.2, 0.96, 0.96, 1.08)) & theme(plot.margin = margin(5.5, 5.5, 5.5, 5.5))
-upper_level
-
-mid_level <- plot_spacer() + p4 + p5 + plot_layout(widths = c(0.35, 3, 1)) & theme(plot.margin = margin(0, 5.5, 0, 5.5))
-mid_level
-
-lower_level <- wrap_plots(p1, p2, guides = "collect")
-lower_level
-
-plot_grid(upper_level, 
-          NULL,
-          mid_level, 
-          lower_level,
-          ncol = 1, rel_heights = c(1, 0.03, 1.35, 1.55)) &
-  theme(plot.background = element_rect(fill = "white", color = "transparent"))
-ggsave(here(fig_dir, "suppl.figureS4.png"), width = 15, height = 16.1, dpi = 600)
+wrap_plots(p4, p5, guides = "collect") & theme(legend.position = "bottom", legend.direction = "horizontal", legend.justification = "center")
+ggsave(here(fig_dir, "conservation_ranking_dynamic_vs_top50.png"), width = 12, height = 6.5)
 
 
 ## Module trees ---------------------------------------------------------
@@ -328,5 +309,5 @@ tree_list <- list(trees[["HOXA2"]], trees_top50[["HOXA2"]])
 names(tree_list) <- c("HOXA2", "HOXA2_top50")
 
 l <- plotTreesAdjusted(tree_list, species_colors = species_colors, tip_size = 3.7)
-l[[1]] + l[[2]] & theme(legend.position = "none")
-ggsave(here(fig_dir, "suppl.figure4_trees.pdf"), width = 8, height = 3.5)
+(l[[1]] + ggtitle("Dynamic pruning") + theme(legend.position = "none")) + (l[[2]] + ggtitle("Top50 pruning"))
+ggsave(here(fig_dir, "hoxa2_tree_dynamic_vd_top50.png"), width = 9, height = 3.5)

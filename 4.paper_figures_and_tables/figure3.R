@@ -1,4 +1,4 @@
-here::i_am("scripts/4.paper_figures/figure3.R")
+here::i_am("scripts/4.paper_figures_and_tables/figure3.R")
 
 library(tidyverse)
 library(cowplot)
@@ -16,8 +16,8 @@ library(RColorBrewer)
 library(here)
 
 wd <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
-source(here("scripts/4.paper_figures/helper_functions.R"))
-fig_dir <- here("scripts/4.paper_figures/figures/")
+source(here("scripts/4.paper_figures_and_tables/helper_functions.R"))
+fig_dir <- here("data/paper_figures_and_tables/")
 
 
 ## cor.kIM distributions --------------------------------------------------
@@ -29,7 +29,7 @@ replicate2species <- readRDS(here("data/neural_differentiation_dataset/processed
 pres_stats <- readRDS(here(wd, "pres_stats.rds"))
 random_pres_stats <- readRDS(here(wd, "random_pres_stats.rds"))
 
-# to plot
+# preservation statistics per phylogenetic distance groups (within-species/human-gorilla/ape-macaque) and module type (actual/random)
 pres_stats_to_plot <- bind_rows(`actual modules` = pres_stats,
                                 `random modules` = random_pres_stats,
                                 .id = "module_type") %>% 
@@ -42,6 +42,7 @@ pres_stats_to_plot <- bind_rows(`actual modules` = pres_stats,
 category_colors <- setNames(c("#08635C", "#018E85", "#4CBEB4", "#c08316", "#ebb24b", "#F1D38F"),
                             unique(pres_stats_to_plot$category_type))
 
+# plot 
 p1 <- pres_stats_to_plot %>% 
   ggplot(aes(y = category, x = cor_kIM, fill = category_type)) +
   geom_boxplot(color = "grey20", linewidth = 0.1, outlier.alpha = 0.5, outlier.size = 0.2) +
@@ -189,11 +190,14 @@ tree_legend <- get_legend(ggtree(tree1, layout = "unrooted", size = 1.7, color =
         legend.key.spacing.y = unit(0.05, "cm")))
 
 p3 + p4 + p5 + p2 + p6 + p7 + tree_legend + plot_layout(ncol = 7)
-ggsave(here(fig_dir, "tree_stats_illustrations.pdf"), width = 20, height = 4)
+ggsave(here(fig_dir, "figure3_tree_stats_illustrations.pdf"), width = 20, height = 4)
 
 ## Module conservation overall ------------------------------------------
 
+# load CroCoNet results
 module_conservation_overall <- readRDS(here(wd, "module_conservation_overall.rds"))
+
+# plot total tree length VS within-species diversity with regression line, prediction interval and conserved + diverged modules highlighted
 p8 <- plotConservedDivergedModules(module_conservation_overall, label_size = 3.5) +
   theme(legend.position = "bottom",
         legend.direction = "horizontal",
@@ -205,7 +209,10 @@ p8
 
 ## Module conservation human lineage ------------------------------------------
 
+# load CroCoNet results
 module_conservation_human <- readRDS(here(wd, "module_conservation_human.rds"))
+
+# plot human subtree length VS human diversity with regression line, prediction interval and diverged modules highlighted
 colors <- c(diverged = "salmon", conserved = "#2B823A", not_significant = "black")
 p9 <- plotConservedDivergedModules(module_conservation_human, label_size = 3.5) +
   scale_color_manual(values = colors, breaks = "diverged", labels = "diverged on the human lineage") +
@@ -218,10 +225,13 @@ p9
 
 ## Small trees ----------------------------------------------------------
 
+# load the module trees for all modules
 trees <- readRDS(here(wd, "trees.rds"))
 
+# define species colors
 spec_colors <- c("#B3E86B", "#79CBFF", "#DB9DFF")
 
+# select modules of interest
 modules <- c(top5_conserved_modules <- module_conservation_overall %>%
                dplyr::filter(conservation == "conserved") %>%
                dplyr::slice_min(order_by = residual, n = 5) %>%
@@ -235,8 +245,9 @@ modules <- c(top5_conserved_modules <- module_conservation_overall %>%
                pull(regulator)) %>% 
   as.character()
 
+# plot module trees with comparable scaling
 plotSmallTrees(trees[modules], species_colors = spec_colors)
-ggsave(here(fig_dir, "small_trees_overall_human.pdf"), width = 13.5, height = 8.5)
+ggsave(here(fig_dir, "figure3_small_trees_overall_human.pdf"), width = 13.5, height = 8.5)
 
 
 
@@ -283,8 +294,15 @@ p10 <- target_contributions %>%
 p10
 
 
-## TFBS validation ------------------------------------------------------
+## Binding site divergence ------------------------------------------------------
 
+# get the 5 most conserved and 5 most diverged modules
+top5_cons_div_modules <- module_conservation_overall %>%
+  dplyr::filter(conservation %in% c("conserved", "diverged")) %>%
+  dplyr::arrange(residual) %>%
+  dplyr::slice(1:5, (dplyr::n()-4):dplyr::n())
+
+# get phylogenetic distances between the species
 tree <- readRDS(here(wd, "tree.rds"))
 phylo_dist <- ape::cophenetic.phylo(tree) %>%
   as.data.frame() %>%
@@ -295,51 +313,18 @@ phylo_dist <- ape::cophenetic.phylo(tree) %>%
   dplyr::filter(as.integer(species1) < as.integer(species2) & !(species1 == "gorilla" & species2 == "cynomolgus")) %>% 
   dplyr::transmute(species_pair = paste0(species1, " VS ", species2), distance)
 
-tfbs_scores_per_gene <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/TFBS_scores/RDS/tfbs_scores_per_gene.rds") %>% 
-  dplyr::mutate(species = gsub("cyno", "cynomolgus", species))
-
-top5_cons_div_modules <- module_conservation_overall %>%
-  dplyr::filter(conservation %in% c("conserved", "diverged")) %>%
-  dplyr::arrange(residual) %>%
-  dplyr::slice(1:5, (dplyr::n()-4):dplyr::n()) %>%
-  dplyr::transmute(module = regulator, conservation, module_type = "pruned")
-
-tfbs_scores_per_gene <- tfbs_scores_per_gene %>%
-  dplyr::filter(module_type == "pruned") %>% 
-  dplyr::select(-module_type) %>% 
+# binding site divergence for the 
+binding_site_vs_network_divergence <- readRDS(here("data/validations/binding_site_enrichment_and_divergence/binding_site_vs_network_divergence.rds")) %>% 
   inner_join(top5_cons_div_modules)
 
-tfbs_scores_cross_spec_diff_per_module <- tfbs_scores_per_gene %>%
-  group_by(conservation, module, gene_name) %>% 
-  dplyr::transmute(conservation, module, gene_name,
-                   species1 = factor(species, c("human", "gorilla", "cynomolgus")),
-                   sum_score1 = sum_score,
-                   species2 = species1,
-                   sum_score2 = sum_score) %>%
-  group_by(conservation, module, gene_name) %>%
-  tidyr::expand(nesting(species1, sum_score1), 
-                nesting(species2, sum_score2)) %>%
-  dplyr::filter(as.integer(species2) > as.integer(species1)) %>%
-  ungroup() %>%
-  dplyr::mutate(delta = abs(sum_score2 - sum_score1),
-                species_pair = paste0(species1, " VS ", species2)) %>% 
-  group_by(conservation, module, species1, species2, species_pair) %>% 
-  dplyr::summarize(median_delta = median(delta),
-                   var_delta = var(delta)) %>% 
-  dplyr::mutate(conservation = paste0("top 5\n", conservation)) %>% 
-  dplyr::filter(species_pair != "gorilla VS cynomolgus") %>% 
-  inner_join(phylo_dist) %>% 
-  ungroup()
-
-fit <- lm(median_delta ~ conservation + distance, 
-          data = tfbs_scores_cross_spec_diff_per_module) ## signif
+# test whether regulators with diverged modules show higher binding site divergence than regulators with conserved modules (while accounting for the phylogeny)
+fit <- lm(median_delta_score ~ conservation + distance, 
+          data = binding_site_vs_network_divergence) ## signif
 summary(fit)
-par(mfrow = c(2, 2))
-plot(fit)
 
-p11 <- tfbs_scores_cross_spec_diff_per_module %>% 
-  dplyr::mutate(species_pair = factor(species_pair, c("human VS gorilla", "human VS cynomolgus"))) %>% 
-  ggplot(aes(x = conservation, y = median_delta)) +
+# plot
+p11 <- binding_site_vs_network_divergence %>% 
+  ggplot(aes(x = conservation, y = median_delta_score)) +
   geom_beeswarm(aes(color = species_pair), dodge.width = 0.2, size = 1.4, cex = 2) +
   theme_bw(base_size = 14) +
   scale_color_manual(values = c("human VS gorilla" = "cyan3", "human VS cynomolgus" = "royalblue2"), labels =c("human VS\ngorilla", "human VS\ncynomolgus"),  name = "species pair") +
@@ -351,7 +336,7 @@ p11 <- tfbs_scores_cross_spec_diff_per_module %>%
   ylab("binding site divergence") +
   scale_x_discrete(labels = c("top 5 conserved\nmodules", "top 5 diverged\nmodules")) +
   stat_summary(fun="mean", geom="crossbar", linewidth = 0.2, width = 0.25) +
-  geom_signif(comparisons = list(c("top 5\nconserved", "top 5\ndiverged")), annotations = c("*"), vjust = 0.4, size = 0.3) 
+  geom_signif(comparisons = list(c("conserved", "diverged")), annotations = c("*"), vjust = 0.4, size = 0.3) 
 p11
 
 

@@ -106,6 +106,7 @@ metadata_filt <- metadata_filt %>%
   dplyr::relocate(replicate, .after = "donor") %>% 
   dplyr::rename(cell_type = subclass, cell_type_color = subclass_color) %>% 
   dplyr::mutate(replicate = factor(replicate, replicate_names))
+saveRDS(metadata_filt, here(wd, "metadata_filt.rds"))
 
 # load orthologous genes
 orthologous_genes <- readRDS(here(wd, "orthologous_genes.RDS"))

@@ -22,6 +22,7 @@ gene_ratios <-  bind_rows(initial = readRDS(here(wd, "initial_modules_enrichment
                           pruned = readRDS(here(wd, "pruned_modules_enrichment.rds")),
                           random = readRDS(here(wd, "random_modules_enrichment.rds")),
                           .id = "module_type") %>% 
+  dplyr::filter(p_adj < 0.1) %>% 
   group_by(regulator, module_type) %>%
   dplyr::summarise(gene_ratio = length(unique(unlist(str_split(enriched_genes, ",")))) / unique(n_genes_in_module)) %>%
   ungroup() %>% 
@@ -30,12 +31,12 @@ gene_ratios <-  bind_rows(initial = readRDS(here(wd, "initial_modules_enrichment
 saveRDS(gene_ratios, here(wd, "gene_ratios.rds"))
 
 # get differences compared to the random modules
-gene_ratio_diffs <- gene_ratios %>% 
+gene_ratios_initial_pruned_vs_random <- gene_ratios %>% 
   pivot_wider(names_from = "module_type", values_from = "gene_ratio") %>% 
   dplyr::mutate(initial_random = initial - random,
                 pruned_random = pruned - random) %>% 
   pivot_longer(c("initial_random", "pruned_random"), names_to = "comparison", values_to = "diff")
-saveRDS(gene_ratio_diffs, here(wd, "gene_ratio_diffs.rds"))
+saveRDS(gene_ratios_initial_pruned_vs_random, here(wd, "gene_ratios_initial_pruned_vs_random.rds"))
 
 # do paired two-sided Wilcoxon-tests
 gene_ratios %>% 
@@ -45,13 +46,12 @@ gene_ratios %>%
                     pruned_random = broom::tidy(wilcox.test(pruned, random, paired = TRUE))[1:2],
                     pruned_random_initial_random = broom::tidy(wilcox.test(pruned-random, initial - random, paired = TRUE))[1:2],
                     .id = "comparison")) %>% 
-  dplyr::mutate(significance_level = case_when(p.value < 0.0001 ~ "****",
-                                               p.value < 0.001 ~ "***",
+  dplyr::mutate(significance_level = case_when(p.value < 0.001 ~ "***",
                                                p.value < 0.01 ~ "**",
                                                p.value < 0.05 ~ "*",
                                                TRUE ~ "n.s."))
 
-# plot initial, puned and random gene ratios
+# plot initial, pruned and random gene ratios
 gene_ratios %>% 
   dplyr::mutate(module_type = factor(paste0(module_type, "\nmodules"), c("initial\nmodules", "pruned\nmodules", "random\nmodules"))) %>% 
   ggplot(aes(x = module_type, y = gene_ratio, fill = module_type)) +
@@ -61,17 +61,17 @@ gene_ratios %>%
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(size = 11.5, color = "black")) +
   ylab("gene ratio in enriched pathways") +
-  geom_signif(test = "wilcox.test", test.args = list(paired = TRUE), comparisons = list(c("initial\nmodules", "pruned\nmodules"), c("pruned\nmodules", "random\nmodules")), map_signif_level = c("****"=0.0001, "***"=0.001, "**"=0.01, "*"=0.05), vjust = 0.4, extend_line = -0.005, tip_length = 0.02, size = 0.3) +
+  geom_signif(test = "wilcox.test", test.args = list(paired = TRUE), comparisons = list(c("initial\nmodules", "pruned\nmodules"), c("pruned\nmodules", "random\nmodules")), map_signif_level = c( "***"=0.001, "**"=0.01, "*"=0.05), vjust = 0.4, extend_line = -0.005, tip_length = 0.02, size = 0.3) +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.07)))
 ggsave(paste0(wd, "figures/gene_ratios_per_module_type.png"), width = 5, height = 4)
 
 # get maximum value for plotting
-max_ratio_diff <- gene_ratio_diffs %>%
+max_ratio_diff <- gene_ratios_initial_pruned_vs_random %>%
   pull(diff) %>%
   max()
 
 # plot initial-random and pruned-random differences in gene ratios
-gene_ratio_diffs %>%
+gene_ratios_initial_pruned_vs_random %>%
   dplyr::mutate(comparison = factor(gsub("_", " VS\n", comparison), c("pruned VS\nrandom", "initial VS\nrandom"))) %>%
   ggplot(aes(y = comparison, x = diff, fill = comparison)) +
   geom_boxplot(color = "grey20", linewidth = 0.1, outlier.alpha = 0.5, outlier.size = 0.2) +
@@ -83,13 +83,13 @@ gene_ratio_diffs %>%
   stat_compare_means(method = "wilcox.test", comparisons = list(c("pruned VS\nrandom", "initial VS\nrandom")), label = "p.signif", vjust = 0.4, tip.length = 0.015, label.x = max_ratio_diff*1.1, symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, Inf), symbols = c("***", "**", "*", "ns"))) +
   geom_text(data = . %>% group_by(comparison) %>% dplyr::summarise(label = ifelse(unique(comparison) == "initial VS\nrandom", "*", "***"), x = max_ratio_diff*1.07), aes(x = x, label = label), angle = 90) +
   scale_x_continuous(expand = expansion(mult = c(0.05, 0.08)))
-ggsave(paste0(wd, "figures/gene_ratio_diffs_initial_pruned_vs_random.png"), width = 5, height = 3)
+ggsave(paste0(wd, "figures/gene_ratios_initial_pruned_vs_random_initial_pruned_vs_random.png"), width = 5, height = 3)
 
 # load results for pruned modules
 pruned_modules_enrichment <- readRDS(here(wd, "pruned_modules_enrichment.rds"))
 
 # helper function
-source(here("scripts/4.paper_figures/helper_functions.R"))
+source(here("scripts/4.paper_figures_and_tables/helper_functions.R"))
 
 # choose modules of interest and plot Reactome dotplot
 example_modules <- c("NANOG", "POU5F1", "SALL4", "NEUROD4", "PAX6", "FEZF2")

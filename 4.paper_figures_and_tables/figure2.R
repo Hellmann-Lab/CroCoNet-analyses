@@ -1,4 +1,4 @@
-here::i_am("scripts/4.paper_figures/figure2.R")
+here::i_am("scripts/4.paper_figures_and_tables/figure2.R")
 
 library(tidyverse)
 library(SCORPIUS)
@@ -13,11 +13,12 @@ library(ggraph)
 library(ReactomePA)
 library(here)
 library(ggtext)
-# library(grid)
+library(cowplot)
+library(CroCoNet)
 
 wd <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
-source(here("scripts/4.paper_figures/helper_functions.R"))
-fig_dir <- here("scripts/4.paper_figures/figures/")
+source(here("scripts/4.paper_figures_and_tables/helper_functions.R"))
+fig_dir <- here("data/paper_figures_and_tables/")
 
 
 ## POU5F1 detailed pruning ----------------------------------------------
@@ -29,7 +30,7 @@ initial_modules <- readRDS(here(wd, "initial_modules.rds"))
 consensus_network <- readRDS(here(wd, "consensus_network.rds"))
 
 plotPruningExample("POU5F1", initial_modules, consensus_network, 3)
-ggsave(here(fig_dir, "POU5F1_detailed_UIK_adj_kIM.pdf"), height = 9.8, width = 5.4)
+ggsave(here(fig_dir, "figure2_POU5F1_pruning.pdf"), height = 9.8, width = 5.4)
 
 
 # Trajectory plot ------------------------------------------------------
@@ -129,7 +130,7 @@ initial_modules <- initial_modules %>%
 pruned_modules <- pruned_modules %>%
   group_by(regulator) %>%
   dplyr::transmute(regulator = as.character(regulator), target, weight,
-                   kIM = Matrix::rowSums(adjMat[target, c(target, unique(regulator))]),
+                   kIM,
                    module_size)
 
 # random modules
@@ -185,32 +186,31 @@ kIM_comp
 ## Gene set enrichment results ------------------------------------------
 
 # load gene ratios per module (gene ratio = the fraction of genes in a module that are associated with any of the enriched pathways)
-frac_enr_genes <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/RDS/frac_enr_genes_per_module_act.rds")
+gene_ratios <- readRDS(here("data/validations/pathway_enrichment/gene_ratios.rds"))
 
 # do paired two-sided Wilcoxon-tests
-frac_enr_genes %>% 
-  pivot_wider(names_from = "module_type", values_from = frac_enr_genes) %>% 
+gene_ratios %>% 
+  pivot_wider(names_from = "module_type", values_from = gene_ratio) %>% 
   reframe(bind_rows(initial_pruned = broom::tidy(wilcox.test(initial, pruned, paired = TRUE))[1:2],
                     initial_random = broom::tidy(wilcox.test(initial, random, paired = TRUE))[1:2],
                     pruned_random = broom::tidy(wilcox.test(pruned, random, paired = TRUE))[1:2],
                     pruned_random_initial_random = broom::tidy(wilcox.test(pruned-random, initial - random, paired = TRUE))[1:2],
                     .id = "comparison")) %>% 
-  dplyr::mutate(significance_level = case_when(p.value < 0.0001 ~ "****",
-                                               p.value < 0.001 ~ "***",
+  dplyr::mutate(significance_level = case_when(p.value < 0.001 ~ "***",
                                                p.value < 0.01 ~ "**",
                                                p.value < 0.05 ~ "*",
                                                TRUE ~ "n.s."))
 
 # get differences compared to the random modules
-frac_enr_genes_diff <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/RDS/frac_enr_genes_initial_pruned_vs_random_act.rds")
+gene_ratios_initial_pruned_vs_random <- readRDS(here("data/validations/pathway_enrichment/gene_ratios_initial_pruned_vs_random.rds"))
 
 # get maximum value for plotting
-max_ratio_diff <- frac_enr_genes_diff %>%
+max_ratio_diff <- gene_ratios_initial_pruned_vs_random %>%
   pull(diff) %>%
   max()
 
 # plot initial-random and pruned-random differences
-pathway_enr <- frac_enr_genes_diff %>%
+pathway_enr <- gene_ratios_initial_pruned_vs_random %>%
   dplyr::mutate(comparison = factor(gsub("_", " VS\n", comparison), c("pruned VS\nrandom", "initial VS\nrandom"))) %>%
   ggplot(aes(y = comparison, x = diff, fill = comparison)) +
   geom_boxplot(color = "grey20", linewidth = 0.1, outlier.alpha = 0.5, outlier.size = 0.2) +
@@ -222,35 +222,16 @@ pathway_enr <- frac_enr_genes_diff %>%
   stat_compare_means(method = "wilcox.test", comparisons = list(c("pruned VS\nrandom", "initial VS\nrandom")), label = "p.signif", vjust = 0.4, tip.length = 0.015, label.x = max_ratio_diff*1.1, symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, Inf), symbols = c("***", "**", "*", "ns"))) +
   geom_text(data = . %>% group_by(comparison) %>% dplyr::summarise(label = ifelse(unique(comparison) == "initial VS\nrandom", "*", "***"), x = max_ratio_diff*1.07), aes(x = x, label = label), angle = 90) +
   scale_x_continuous(expand = expansion(mult = c(0.05, 0.08)))
+pathway_enr
 
 
-# Gene set enrichment results (odds ratio)
-# 
-# frac_enr_genes_act <-  bind_rows(initial = readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/RDS/initial_filt_enrichment.rds"),
-#                                  pruned = readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/RDS/pruned_filt_enrichment.rds"),
-#                                  random = readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/RDS/random_filt_enrichment.rds"),
-#                                  .id = "module_type") %>% 
-#   dplyr::rename(regulator = module) %>% 
-#   dplyr::mutate(Y_Y = n_enriched_genes,
-#                 Y_N = n_genes_in_module - n_enriched_genes,
-#                 N_Y = n_genes_in_term - n_enriched_genes,
-#                 N_N = n_genes_total - Y_Y - Y_N - N_Y,
-#                 odds_ratio = (Y_Y * N_N) / (Y_N * N_Y)) %>% 
-#   group_by(regulator, module_type) %>%
-#   dplyr::summarise(max_odds_ratio = max(odds_ratio)) %>%
-#   ungroup() %>% 
-#   right_join(all_modules %>% dplyr::select(regulator, module_type), by = c("regulator", "module_type")) %>%
-#   dplyr::mutate(frac_enr_genes = replace_na(frac_enr_genes, 0)) 
-# saveRDS(frac_enr_genes_act, "RDS/frac_enr_genes_per_module_act.rds")
-
-# ## TFBS enrichment ------------------------------------------------------
+## Motif enrichment ------------------------------------------------------
 
 # load summarized scores per module
-tfbs_scores_per_module <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/RDS/tfbs_scores_per_module.rds") %>% 
-  dplyr::mutate(species = factor(gsub("cyno", "cynomolgus", species), c("human", "gorilla", "cynomolgus")))
+motif_scores_per_module <- readRDS(here("data/validations/binding_site_enrichment_and_divergence/motif_scores_per_module.rds"))
 
 # do paired two-sided Wilcoxon-tests
-tfbs_scores_per_module %>% 
+motif_scores_per_module %>% 
   pivot_wider(names_from = "module_type", values_from = median_sum_score) %>% 
   group_by(species) %>% 
   reframe(bind_rows(initial_pruned = broom::tidy(wilcox.test(initial, pruned, paired = TRUE))[1:2],
@@ -265,16 +246,16 @@ tfbs_scores_per_module %>%
                                                TRUE ~ "n.s."))
 
 # get differences compared to the random modules
-tfbs_scores_diff_per_module <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/RDS/tfbs_scores_initial_pruned_vs_random.rds")
+motif_scores_initial_pruned_vs_random <- readRDS(here("data/validations/binding_site_enrichment_and_divergence/motif_scores_initial_pruned_vs_random.rds"))
 
 # get maximum for plotting
-max_score_diff <- tfbs_scores_diff_per_module %>% 
+max_score_diff <- motif_scores_initial_pruned_vs_random %>% 
   dplyr::filter(species == "human") %>%
   pull(diff) %>% 
   max()
 
 # plot initial-random and pruned-random differences (human only)
-motif_enr <- tfbs_scores_diff_per_module %>%
+motif_enr <- motif_scores_initial_pruned_vs_random %>%
   dplyr::filter(species == "human") %>%
   dplyr::mutate(comparison = factor(gsub("_", " VS\n", comparison), c("pruned VS\nrandom", "initial VS\nrandom"))) %>%
   ggplot(aes(y = comparison, x = diff, fill = comparison)) +
@@ -288,13 +269,13 @@ motif_enr <- tfbs_scores_diff_per_module %>%
   stat_compare_means(method = "wilcox.test", comparisons = list(c("pruned VS\nrandom", "initial VS\nrandom")), label = "p.signif", vjust = 0.4, tip.length = 0.015, label.x = max_score_diff*1.1, symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, Inf), symbols = c("***", "**", "*", "ns"))) +
   geom_text(data = . %>% group_by(comparison) %>% dplyr::summarise(label = ifelse(unique(comparison) == "initial VS\nrandom", "", "***"), x = max_score_diff*1.07), aes(x = x, label = label), angle = 90) +
   scale_x_continuous(expand = expansion(mult = c(0.05, 0.08)))
-
+motif_enr
 
 
 ## POU5F1 ChIP-seq ------------------------------------------------------
 
 # load ChIP-seq overlaps per gene
-overlaps <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/ChIP_seq/RDS/overlaps.rds")
+overlaps <- readRDS(here("data/validations/POU5F1_ChIP_seq/ChIP_ATAC_overlaps.rds"))
 
 # plot the fraction of genes that have associated POU5F1 ChIP-seq peaks(s) in the POU5F1 module VS among all other genes
 chip_seq <- overlaps %>%
@@ -311,6 +292,7 @@ chip_seq <- overlaps %>%
   scale_fill_manual(values = c("grey60", "#08635C"), guide = "none") +
   geom_signif(comparisons = list(c("POU5F1\nmodule", "other")), annotations = c("***"), vjust = 0.4, size = 0.3) +
   scale_x_continuous(expand = expansion(mult = c(0.05, 0.08)))
+chip_seq
 
 
 ## Combining patchwork --------------------------------------------------
@@ -321,25 +303,24 @@ p1 <- wrap_plots(traj_plot_ct + theme(legend.position = "none"), get_legend(traj
                   cdde",
                   widths = c(1.08, 0.01, 0.99, 1),
                   heights = c(1.01, 1))
-# p2 <- pathway_enr + motif_enr + chip_seq + plot_layout(widths = c(1, 1, 1.3))
-# plot_grid(p1, p2, ncol = 1, rel_heights = c(2, 0.9))
-# ggsave("figures/pruning_stats_retest.pdf", width = 9.5, height = 8.4)
 
 p2 <- wrap_plots(pathway_enr, motif_enr, plot_spacer(), chip_seq, design = "abbc
 dd##",
                  widths = c(1.05, 0.5, 0.5, 1.3))
+
 plot_grid(p1, p2, ncol = 1, rel_heights = c(2, 2))
-ggsave("figures/pruning_stats.pdf", width = 9.5, height = 10.5)
-ggsave("figures/pruning_stats.png", width = 9.5, height = 10.5, dpi = 600)
+ggsave(here(fig_dir, "figure2_pruning_stats_and_validations.pdf"), width = 9.5, height = 10.5)
+ggsave(here(fig_dir, "figure2_pruning_stats_and_validations.png"), width = 9.5, height = 10.5)
+
 
 ## Network plot ---------------------------------------------------------
 
 # load module overlap fractions and hub protein-protein interactions
-mod_overlaps <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/PPI/RDS/module_overlaps.rds")
+mod_overlaps <- readRDS(here("data/validations/regulator_interactions_and_module_overlaps/module_overlaps_pruned.rds"))
 
 # subset the top 100 edges (= module pairs with the largest overlaps)
 mod_overlaps_filt <- mod_overlaps %>%
-  dplyr::mutate(interaction = !is.na(score_full)) %>% 
+  dplyr::mutate(interaction = !is.na(interaction_score)) %>% 
   dplyr::mutate(rnk_overlap_frac = base::rank(overlap_frac)) %>%
   dplyr::filter(rnk_overlap_frac > nrow(.) - 100)
 
@@ -374,7 +355,7 @@ ggraph(layout) +
         panel.background = element_rect(fill = "white", color = "transparent"),
         plot.background = element_rect(fill = "white", color = "transparent"),
         legend.key.height = unit(0.4, "cm"))
-ggsave("figures/module_overlaps.pdf", width = 10, height = 7)
+ggsave(here(fig_dir, "figure2_module_overlaps.pdf"), width = 10, height = 7)
 
 
 ## Eigengene heatmap ----------------------------------------------------
@@ -451,9 +432,8 @@ ct_rug <- ggplot(cell_order, aes(x = cell), y = 1) +
   scale_y_continuous(expand=c(0,0))
 
 # combine heatmap and rug
-eigengene <- heatmap / plot_spacer() / ct_rug + plot_layout(heights = c(1, -0.04, 0.026), guides = "collect") & theme(legend.justification = "left")
-plot_grid(eigengene, NULL, align = "h", axis = "t", rel_widths = c(1.1, 1))
-ggsave("figures/eigengenes.png", width = 15.8, height = 5.65, dpi = 600)
+heatmap / plot_spacer() / ct_rug + plot_layout(heights = c(1, -0.04, 0.026), guides = "collect") & theme(legend.justification = "left")
+ggsave(here(fig_dir, "figure2_eigengene_examples.png"), width = 8.5, height = 5.7)
 
 
 ## GSEA examples --------------------------------------------------------
@@ -464,25 +444,18 @@ pluri_genes_subset <- c("POU5F1", "NANOG", "SALL4", "ID1", "JARID2")
 # 5 early neural markers
 neuro_genes_subset <- c("PAX6", "ASCL1", "SOX1", "OTX1", "FEZF2")
 
+# load the results of pathway enrichment analysis on the pruned modules
+pruned_modules_enrichment <- readRDS(here("data/validations/pathway_enrichment/pruned_modules_enrichment.rds"))
+
 # get all enriched terms for the 5 pluripotency markers
-enr_terms_pluri <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/RDS/pruned_filt_enrichment.rds") %>%
-  dplyr::rename(regulator = module) %>%
+enr_terms_pluri <- pruned_modules_enrichment %>%
   dplyr::filter(p_adj < 0.1 & regulator %in% pluri_genes_subset) %>%
-  # group_by(regulator) %>%
-  # arrange(p_adj) %>%
-  # slice_head(n = 3) %>%
   pull(description) %>%
   unique()
 
 # choose the top 5 enriched terms based on the sum of gene ratios across the 5 modules
-enr_pluri <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/RDS/pruned_filt_enrichment.rds") %>%
-  dplyr::rename(regulator = module) %>%
+enr_pluri <- pruned_modules_enrichment %>%
   dplyr::filter(p_adj < 0.1 & regulator %in% pluri_genes_subset & description %in% enr_terms_pluri) %>%
-  dplyr::mutate(Y_Y = n_enriched_genes,
-                Y_N = n_genes_in_module - n_enriched_genes,
-                N_Y = n_genes_in_term - n_enriched_genes,
-                N_N = n_genes_total - Y_Y - Y_N - N_Y,
-                odds_ratio = (Y_Y * N_N) / (Y_N * N_Y)) %>% 
   dplyr::select(regulator, description, geneRatio, p_adj, odds_ratio) %>%
   group_by(description) %>%
   dplyr::mutate(sum_geneRatio = sum(geneRatio)) %>%
@@ -494,24 +467,14 @@ enr_pluri <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.vali
                 regulator = factor(regulator, pluri_genes_subset))
 
 # get all enriched terms for the 5 neural markers
-enr_terms_neuro <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/RDS/pruned_filt_enrichment.rds") %>%
-  dplyr::rename(regulator = module) %>%
+enr_terms_neuro <- pruned_modules_enrichment %>%
   dplyr::filter(p_adj < 0.1 & regulator %in% neuro_genes_subset) %>%
-  # group_by(regulator) %>%
-  # arrange(p_adj) %>%
-  # slice_head(n = 3) %>%
   pull(description) %>%
   unique()
 
 # choose the top 5 enriched terms based on the sum of gene ratios across the 5 modules
-enr_neuro <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/04.validation/RDS/pruned_filt_enrichment.rds") %>%
-  dplyr::rename(regulator = module) %>%
+enr_neuro <- pruned_modules_enrichment %>% 
   dplyr::filter(p_adj < 0.1 & regulator %in% neuro_genes_subset & description %in% enr_terms_neuro) %>%
-  dplyr::mutate(Y_Y = n_enriched_genes,
-                Y_N = n_genes_in_module - n_enriched_genes,
-                N_Y = n_genes_in_term - n_enriched_genes,
-                N_N = n_genes_total - Y_Y - Y_N - N_Y,
-                odds_ratio = (Y_Y * N_N) / (Y_N * N_Y)) %>% 
   dplyr::select(regulator, description, geneRatio, p_adj, odds_ratio) %>%
   group_by(description) %>%
   dplyr::mutate(sum_geneRatio = sum(geneRatio)) %>%
@@ -554,7 +517,6 @@ p2 <- enr_neuro %>%
         plot.margin = margin(t = 2))
 p2
 
-gsea <- p1 / p2 + plot_layout(guides = "collect") & theme(plot.margin = margin(5.5, 5.5, 2.5, 5),
+p1 / p2 + plot_layout(guides = "collect") & theme(plot.margin = margin(5.5, 5.5, 2.5, 5),
                                                           plot.background = element_rect(fill = "transparent", color = "transparent"))
-plot_grid(NULL, gsea, align = "h", axis = "t", rel_widths = c(1.1, 1))
-ggsave("figures/gsea.pdf", width = 15.8, height = 5.8, dpi = 600)
+ggsave(here(fig_dir, "figure2_pathway_enrichment_examples.pdf"), width = 7.52, height = 5.8)

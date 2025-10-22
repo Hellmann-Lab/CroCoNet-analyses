@@ -95,21 +95,14 @@ analysis</em>
 - [Module assignment, calculation of preservation scores and
   quantification of cross-species module conservation using
   CroCoNet](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.1.CroCoNet_analysis.R)
-
-</details>
-<details>
-<summary>
-<strong>Additional analyses</strong>
-</summary>
-
 - [Run CroCoNet analysis using the top50 pruning
-  approach](1.neural_differentiation_dataset/1.4.additional_analyses/1.4.1.CroCoNet_analysis_with_top50_pruning.R)
+  approach](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.2.CroCoNet_analysis_with_top50_pruning.R)
 - [Compare results between the dynamic and top50 pruning
-  approaches](1.neural_differentiation_dataset/1.4.additional_analyses/1.4.2.dynamic_VS_top50_pruning.R)
+  approaches](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.3.dynamic_VS_top50_pruning.R)
 - [Run CroCoNet analysis using cor.adj preservation
-  scores](1.neural_differentiation_dataset/1.4.additional_analyses/1.4.3.CroCoNet_analysis_with_cor_adj.R)
+  scores](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.4.CroCoNet_analysis_with_cor_adj.R)
 - [Compare results between the cor.kIM and cor.adj preservation
-  scores](1.neural_differentiation_dataset/1.4.additional_analyses/1.4.4.cor_kIM_VS_cor_adj.R)
+  scores](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.5.cor_kIM_VS_cor_adj.R)
 
 </details>
 
@@ -256,7 +249,7 @@ analysis</em>
 </p>
 
 - [Calculate POU5F1 ChIP-seq enrichment near POU5F1 module
-  genes](2.validations/2.6.POU5F1_ChIP_seq/2.6.8.calculate_enrichment_for_POU5F1_module.R)
+  members](2.validations/2.6.2.6.8.calculate_enrichment_near_POU5F1_module_members.R)
 
 </details>
 <details>
@@ -264,8 +257,11 @@ analysis</em>
 <strong>Enrichment of LTR7 elements near POU5F1 module members</strong>
 </summary>
 
+- [Collect information about LTR7 elements in the human genome
+  (position, orthology and TF
+  binding)](2.validations/2.7.POU5F1_LTR7_enrichment/2.7.1.get_LTR7_positions_and_info.R)
 - [Calculate LTR7 enrichment near POU5F1 module
-  members](2.validations/2.7.POU5F1_LTR7_enrichment/2.7.1.POU5F1_LTR7_enrichment.R)
+  members](2.validations/2.7.POU5F1_LTR7_enrichment/2.7.2.calculate_enrichment_near_POU5F1_module_members.R)
 
 </details>
 <details>
@@ -354,6 +350,8 @@ analysis</em>
 - [Module assignment, calculation of preservation scores and
   quantification of cross-species module conservation using
   CroCoNet](3.brain_dataset/3.3.CroCoNet_analysis/3.3.1.CroCoNet_analysis.R)
+- [Run CroCoNet analysis using cor.kIM preservation
+  scores](3.brain_dataset/3.3.3.2.CroCoNet_analysis_with_cor_kIM.R)
 
 </details>
 

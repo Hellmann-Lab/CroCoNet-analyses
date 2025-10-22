@@ -11,7 +11,8 @@ library(ggrepel)
 
 wd <- here("data/brain_dataset/CroCoNet_analysis/")
 dir.create(wd)
-dir.create(here(wd, "figures"))
+fig_dir <- here(wd, "figures/")
+dir.create(fig_dir)
 
 
 ## Network processing ----------------------------------------------------------
@@ -90,24 +91,58 @@ ggsave(here(wd, "figures/networks_examples.png"), width = 13.3, height = 8.8)
 eigengenes <- calculateEigengenes(pruned_modules, sce, pseudotime_column = NULL, n_cores = 5)
 saveRDS(eigengenes, here(wd, "eigengenes.rds"))
 
-eigengenes_filt <- eigengenes %>%
-  dplyr::filter(module %in% paste0(example_modules, "(+)")) %>%
-  dplyr::mutate(module = factor(module, paste0(example_modules, "(+)")))
-plotEigengeneHeatmap(eigengenes_filt, order_by = "cell_type", annotation_colors = ct_colors, clip = 4)
-ggsave(here(wd, "figures/eigengenes_examples.png"), width = 9, height = 5.3)
+# choose 5 markers per class
+markers <- c("SATB2", "TBR1", "HOPX", "ZBTB18", "FOXP1",
+             "DLX1", "LHX6", "MAFB", "SP8", "PROX1",
+             "OLIG1", "NFIA", "FOXO1", "SOX10", "SOX17")
+
+# subset eigengenes
+marker_eigengenes <- eigengenes %>% 
+  dplyr::filter(module %in% paste0(markers, "(+)")) %>% 
+  dplyr::mutate(module = factor(module, paste0(markers, "(+)")))
+saveRDS(marker_eigengenes, here(wd, "marker_eigengenes.rds"))
+
+# helper function
+remove_outliers_z <- function(x, threshold = 3) {
+  z_scores <- scale(x)
+  x[abs(z_scores) <= threshold]
+}
+
+# scale and center eigengenes
+marker_eigengenes <- marker_eigengenes %>% 
+  group_by(module) %>% 
+  dplyr::mutate(mu = mean(remove_outliers_z(eigengene)),
+                sigma = sd(remove_outliers_z(eigengene))) %>% 
+  ungroup() %>% 
+  dplyr::mutate(eigengene = (eigengene - mu) / sigma,
+                eigengene = ifelse(eigengene > 3, 3, eigengene))
+
+# plot marker eigengene expression across all cell types
+plotEigengeneHeatmap(marker_eigengenes, order_by = "cell_type", annotation_colors = ct_colors, z_transform = FALSE) +
+  theme(legend.key.spacing.y = unit(0.2, "cm"),
+        legend.key.width = unit(0.8, "cm"),
+        legend.position = "bottom",
+        legend.direction = "horizontal",
+        legend.title = element_text(margin = margin(r = 20))) +
+  guides(color = "none")
+ggsave(here(fig_dir, "marker_eigengenes.png"), width = 9, height = 8)
 
 # calculate eigengenes per species
 eigengenes_per_species <- calculateEigengenes(pruned_modules, sce, per_species = T, pseudotime_column = NULL, n_cores = 5)
 saveRDS(eigengenes_per_species, here(wd, "eigengenes_per_species.rds"))
 
-eigengenes_per_species_filt <- eigengenes_per_species %>%
-  dplyr::filter(module %in% paste0(example_modules, "(+)")) %>%
-  dplyr::mutate(module = factor(module, paste0(example_modules, "(+)")))
-p <- plotSumEigengenesLine(eigengenes_per_species_filt, cell_type_colors = ct_colors) &
-  guides(fill=guide_legend(ncol=2))
+# subset eigengenes
+marker_eigengenes_per_species <- eigengenes_per_species %>% 
+  dplyr::filter(module %in% paste0(markers, "(+)")) %>% 
+  dplyr::mutate(module = factor(module, paste0(markers, "(+)")))
+saveRDS(marker_eigengenes_per_species, here(wd, "marker_eigengenes_per_species.rds"))
+
+# plot marker eigengene expression across all cell types per species
+p <- plotSumEigengenesLine(marker_eigengenes_per_species, cell_type_colors = ct_colors) &
+  guides(fill=guide_legend(ncol=1))
 p[[1]] <- p[[1]] +
   geom_vline(xintercept = c(5.5, 9.5, 14.5, 18.5), linetype = "dashed", color = "grey40")
-ggsave(here(wd, "figures/eigengenes_per_species_examples.png"), p, width = 9, height = 7)
+ggsave(here(fig_dir, "marker_eigengenes_per_species.png"), p, width = 9, height = 15)
 
 
 ## Preservation statistics ----------------------------------------------
