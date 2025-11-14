@@ -14,11 +14,11 @@ Fiona C. Edenhofer, Beate Vieth, Philipp Janssen, Ines Hellmann
 The data necessary to reproduce this analysis can be found on
 ArrayExpress and GEO:
 
-| Accession                                                                                                                                                               | Dataset          |
-|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|
-| [E-MTAB-15695](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15695)                                                                                      | scRNA-seq data   |
-| [E-MTAB-13373](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-13373) & [E-MTAB-15654](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15654) | ATAC-seq data    |
-| [GSE298717](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE298717)                                                                                               | Perturb-seq data |
+| Accession                                                                                                                                                               | Dataset                  |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|
+| [E-MTAB-15695](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15695)                                                                                      | scRNA-seq data           |
+| [E-MTAB-13373](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-13373) & [E-MTAB-15654](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15654) | ATAC-seq data            |
+| [GSE298717](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE298717) (currently private)                                                                           | Single-cell CRISPRi data |
 
 To be able to smoothly run all analyses, please follow these steps:
 
@@ -28,8 +28,8 @@ To be able to smoothly run all analyses, please follow these steps:
 
 3.  Download the linked Zenodo repository to a subdirectory “data”
 
-CroCoNet – the framework these analyses are based on – is available as
-an [R package](https://github.com/Hellmann-Lab/CroCoNet), accompanied by
+CroCoNet – the framework underlying these analyses – is available as an
+[R package](https://github.com/Hellmann-Lab/CroCoNet), accompanied by
 [detailed documentation and a step-by-step
 tutorial](https://hellmann-lab.github.io/CroCoNet/).
 
@@ -97,14 +97,13 @@ analysis</em>
 <strong>CroCoNet analysis</strong>
 </summary>
 
-- [Module assignment, calculation of preservation scores and
-  quantification of cross-species module conservation using
-  CroCoNet](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.1.CroCoNet_analysis.R)
-- [Run CroCoNet analysis using the top50 pruning
+- [Main CroCoNet
+  analysis](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.1.CroCoNet_analysis.R)
+- [CroCoNet analysis using the top50 pruning
   approach](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.2.CroCoNet_analysis_with_top50_pruning.R)
 - [Compare results between the dynamic and top50 pruning
   approaches](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.3.dynamic_VS_top50_pruning.R)
-- [Run CroCoNet analysis using cor.adj preservation
+- [CroCoNet analysis using cor.adj preservation
   scores](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.4.CroCoNet_analysis_with_cor_adj.R)
 - [Compare results between the cor.kIM and cor.adj preservation
   scores](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.5.cor_kIM_VS_cor_adj.R)
@@ -169,21 +168,27 @@ scripts:
   peaks](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.9.liftOver_human_NPC_peaks_to_gorGor6.R)
 - [Download FASTQ files of the Nanopore
   data](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.10.download_nanopore_FASTQ.sh)
+- [Create minimap2
+  indices](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.11.create_minimap2_index.sh)
 - [Map Nanopore reads using
-  minimap2](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.11.nanopore_mapping.sh)
+  minimap2](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.12.nanopore_mapping.sh)
+- [Merge Nanopore BAMs per species and cell
+  type](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.13.merge_BAMs.sh)
+- [Reconstruct Nanopore transcripts using
+  pinfish](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.14.reconstruct_nanopore_transcripts.sh)
 - [Annotate Nanopore
-  transcripts](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.12.annotate_nanopore_transcripts.R)
+  transcripts](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.15.annotate_nanopore_transcripts.R)
 - [Identify active transcriptional start
-  sites](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.13.identify_TSS.R)
+  sites](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.16.identify_TSS.R)
 - [Associate peaks to genes based on
-  distance](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.14.associate_peaks_to_gene.R)
+  distance](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.17.associate_peaks_to_gene.R)
 - [Retrieve motifs of the central regulators from the JASPAR and IMAGE
-  databases](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.15.get_binding_motifs.R)
+  databases](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.18.get_binding_motifs.R)
 - [Score motifs of each regulator in the peaks associated to their
   module members using
-  Cluster-Buster](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.16.run_cbust.sh)
+  Cluster-Buster](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.19.run_cbust.sh)
 - [Summarize motif scores per
-  gene](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.17.summarize_motif_scores_per_gene.Rmd)
+  gene](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.20.summarize_motif_scores_per_gene.Rmd)
 
 <p style="margin: -1em 0 0em 2em;">
 <em>Start here to skip computationally intensive steps and jump to core
@@ -191,9 +196,9 @@ analysis</em>
 </p>
 
 - [Compare binding site enrichment across module types (initial, pruned,
-  random)](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.18.binding_site_enrichment_across_module_types.R)
+  random)](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.21.binding_site_enrichment_across_module_types.R)
 - [Calculate binding site divergence across
-  species](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.19.binding_site_divergence_across_species.R)
+  species](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.22.binding_site_divergence_across_species.R)
 
 </details>
 <details>
@@ -352,11 +357,12 @@ analysis</em>
 <strong>CroCoNet analysis</strong>
 </summary>
 
-- [Module assignment, calculation of preservation scores and
-  quantification of cross-species module conservation using
-  CroCoNet](3.brain_dataset/3.3.CroCoNet_analysis/3.3.1.CroCoNet_analysis.R)
-- [Run CroCoNet analysis using cor.kIM preservation
-  scores](3.brain_dataset/3.3.3.2.CroCoNet_analysis_with_cor_kIM.R)
+- [Main CroCoNet
+  analysis](3.brain_dataset/3.3.CroCoNet_analysis/3.3.1.CroCoNet_analysis.R)
+- [CroCoNet analysis using cor.kIM preservation
+  scores](3.brain_dataset/3.3.CroCoNet_analysis/3.3.2.CroCoNet_analysis_with_cor_kIM.R)
+- [Compare results between the cor.kIM and cor.adj preservation
+  scores](3.brain_dataset/3.3.CroCoNet_analysis/3.3.3.cor_kIM_VS_cor_adj.R)
 
 </details>
 
@@ -390,6 +396,8 @@ and tables featuring in the manuscript.
 - [Supplementary Figure S7](4.paper_figures_and_tables/suppl.figureS7.R)
 - [Supplementary Figure S8](4.paper_figures_and_tables/suppl.figureS8.R)
 - [Supplementary Figure S9](4.paper_figures_and_tables/suppl.figureS9.R)
+- [Supplementary Figure
+  S10](4.paper_figures_and_tables/suppl.figureS10.R)
 - [Supplementary Figure
   S10](4.paper_figures_and_tables/suppl.figureS10.R)
 
