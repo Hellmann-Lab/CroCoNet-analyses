@@ -5,6 +5,10 @@ library(tidyverse)
 library(here)
 
 
+wd <- here("data/validations/regulator_interactions_and_module_overlaps/")
+dir.create(wd)
+
+
 # list of central regulators
 regulators <- readRDS(here("data/neural_differentiation_dataset/CroCoNet_analysis/regulators.rds"))
 
@@ -33,4 +37,4 @@ regulator_interactions <- bind_rows(regulator_interactions,
                                     regulator_interactions %>% 
                                       dplyr::rename(from2 = to, to2 = from) %>% dplyr::rename(from = from2, to = to2)) %>% 
   distinct()
-saveRDS(regulator_interactions, here("data/validations/regulator_interactions_and_module_overlaps/regulator_interactions.rds"))
+saveRDS(regulator_interactions, here(wd, "regulator_interactions.rds"))

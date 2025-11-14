@@ -52,7 +52,18 @@ experiments_and_cell_lines <- data.frame(species = c(rep("human", 7),
 saveRDS(experiments_and_cell_lines, here(wd, "suppl.table1_experiments_and_cell_lines.rds"))
 
 
-## Supplementary table 2: pruned modules - diff. data -----------------------------------------
+## Supplementary table 2: replicates - brain data ------------------------------------------
+
+replicates_brain_data <- readRDS(here("data/brain_dataset/processed_data/metadata_filt.rds")) %>% 
+  distinct(species, donor, replicate) %>% 
+  group_by(species) %>% 
+  dplyr::arrange(replicate, .by_group = TRUE) %>% 
+  ungroup() %>% 
+  dplyr::rename(replicate_ID_Jorstad_et_al = donor, replicate_ID_this_paper = replicate)
+saveRDS(replicates_brain_data, here(wd, "suppl.table2_replicates_brain_data.rds"))
+
+
+## Supplementary table 3: pruned modules - diff. data -----------------------------------------
 
 # load pruned modules
 pruned_modules_diff_data <- readRDS(here("data/neural_differentiation_dataset/CroCoNet_analysis/pruned_modules.rds")) %>% 
@@ -67,10 +78,23 @@ pruned_modules_diff_data <- readRDS(here("data/neural_differentiation_dataset/Cr
                 n_supporting_replicates,
                 supporting_replicates) %>% 
   round_numeric_columns()
-saveRDS(pruned_modules_diff_data, here(wd, "suppl.table2_pruned_modules_diff_data.rds"))
+saveRDS(pruned_modules_diff_data, here(wd, "suppl.table3_pruned_modules_diff_data.rds"))
 
 
-## Supplementary table 3: module properties - diff.data  ----------------------------------------
+## Supplementary table 4: pruned modules - brain data ---------------------------------------
+
+pruned_modules_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/pruned_modules.rds")) %>% 
+  dplyr::select(regulator,
+                module_size,
+                target,
+                adj_regulator_target = weight,
+                kIM,
+                direction) %>% 
+  round_numeric_columns()
+saveRDS(pruned_modules_brain_data, here(wd, "suppl.table4_pruned_modules_brain_data.rds"))
+
+
+## Supplementary table 5: module properties - diff.data  ----------------------------------------
 
 # sequence conservation
 aa_conservation_regulators <- readRDS(here("data/validations/sequence_divergence/aa_conservation_regulators.rds")) %>% 
@@ -81,14 +105,10 @@ phastCons_regulators <- readRDS(here("data/validations/sequence_divergence/phast
 
 # mean expression
 mean_expr_regulators <- readRDS(here("data/validations/expression_pattern_divergence/mean_expr_regulators.rds")) %>% 
-  dplyr::rename(mean_expression = mean_expr)
+  dplyr::select(regulator, mean_expression = mean_expr)
 
 # expression pattern divergence
-expr_div_regulators <- readRDS(here("data/validations/expression_pattern_divergence/de_results.rds")) %>% 
-  dplyr::select(regulator = gene, contrast, logFC) %>% 
-  pivot_wider(names_from = "contrast", values_from = "logFC", names_prefix = "logFC_iPSC_NPC_") %>% 
-  dplyr::rename(expression_pattern_divergence_human_gorilla = logFC_iPSC_NPC_gorilla_human,
-                expression_pattern_divergence_human_cynomolgus = logFC_iPSC_NPC_cynomolgus_human)
+expr_div_regulators <- readRDS(here("data/validations/expression_pattern_divergence/expression_pattern_divergence.rds"))
 
 # binding site divergence
 median_motif_scores <- readRDS(here("data/validations/binding_site_enrichment_and_divergence/motif_scores_per_module.rds")) %>% 
@@ -161,60 +181,20 @@ module_properties_diff_data <- data.frame(regulator = regulators) %>%
   dplyr::relocate(human_diversity, .before = "residual_human") %>% 
   dplyr::relocate(gorilla_diversity, .before = "residual_gorilla") %>% 
   round_numeric_columns()
-saveRDS(module_properties_diff_data, here(wd, "suppl.table3_module_properties_diff_data.rds"))
-                   
-
-## Supplementary table 4: target contributions - diff.data -----------------------------------
-
-target_contributions_diff_data <- readRDS(here("data/neural_differentiation_dataset/CroCoNet_analysis/target_contributions_overall.rds")) %>% 
-  dplyr::filter(type != "summary") %>% 
-  dplyr::transmute(regulator,
-                   gene_removed = ifelse(is.na(gene_removed), "none", gene_removed),
-                   within_species_diversity,
-                   total_tree_length,
-                   fit,
-                   lwr_fit,
-                   upr_fit,
-                   residual,
-                   contribution) %>% 
-  round_numeric_columns()
-saveRDS(target_contributions_diff_data, here(wd, "suppl.table4_target_contributions_diff_data.rds"))
+saveRDS(module_properties_diff_data, here(wd, "suppl.table5_module_properties_diff_data.rds"))
 
 
-## Supplementary table 5: replicates - brain data ------------------------------------------
-
-replicates_brain_data <- readRDS(here("data/brain_dataset/processed_data/metadata_filt.rds")) %>% 
-  distinct(species, donor, replicate) %>% 
-  group_by(species) %>% 
-  dplyr::arrange(replicate, .by_group = TRUE) %>% 
-  ungroup() %>% 
-  dplyr::rename(replicate_ID_Jorstad_et_al = donor, replicate_ID_this_paper = replicate)
-saveRDS(replicates_brain_data, here(wd, "suppl.table5_replicates_brain_data.rds"))
-
-
-## Supplementary table 6: pruned modules - brain data ---------------------------------------
-
-pruned_modules_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/pruned_modules.rds")) %>% 
-  dplyr::select(regulator,
-                module_size,
-                target,
-                adj_regulator_target = weight,
-                kIM,
-                direction) %>% 
-  round_numeric_columns()
-saveRDS(pruned_modules_brain_data, here(wd, "suppl.table6_pruned_modules_brain_data.rds"))
-
-
-## Supplementary table 7: Module properties MTG ---------------------------------------------------
+## Supplementary table 6: module properties MTG ---------------------------------------------------
 
 # mean expression of regulators
 sce_brain_data <- readRDS(here("data/brain_dataset/processed_data/sce.rds"))
+
+regulators_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/regulators.rds"))
+
 mean_expr_brain_data <- data.frame(regulator = regulators_brain_data,
                                    mean_expr = rowMeans(logcounts(sce_brain_data)[regulators_brain_data, ]))
 
 # connectivity
-regulators_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/regulators.rds"))
-
 consensus_network_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/consensus_network.rds"))
 
 connectivity_brain_data <- data.frame(regulator = regulators_brain_data,
@@ -264,27 +244,44 @@ module_properties_brain_data <- data.frame(regulator = regulators_brain_data) %>
   dplyr::mutate(category_overall = ifelse(is.na(category_overall), "removed", category_overall),
                 human_monophyleticity = replace_na(human_monophyleticity, FALSE),
                 category_human = case_when(is.na(category_overall) ~ "removed",
-                                          !human_monophyleticity ~ "not_monophyletic",
-                                          TRUE ~ category_human),
+                                           !human_monophyleticity ~ "not_monophyletic",
+                                           TRUE ~ category_human),
                 chimp_monophyleticity = replace_na(chimp_monophyleticity, FALSE),
                 category_chimp = case_when(is.na(category_overall) ~ "removed",
-                                          !chimp_monophyleticity ~ "not_monophyletic",
-                                          TRUE ~ category_chimp),
+                                           !chimp_monophyleticity ~ "not_monophyletic",
+                                           TRUE ~ category_chimp),
                 gorilla_monophyleticity = replace_na(gorilla_monophyleticity, FALSE),
                 category_gorilla = case_when(is.na(category_overall) ~ "removed",
-                                            !gorilla_monophyleticity ~ "not_monophyletic",
-                                            TRUE ~ category_gorilla),
+                                             !gorilla_monophyleticity ~ "not_monophyletic",
+                                             TRUE ~ category_gorilla),
                 rhesus_monophyleticity = replace_na(rhesus_monophyleticity, FALSE),
                 category_rhesus = case_when(is.na(category_overall) ~ "removed",
-                                               !rhesus_monophyleticity ~ "not_monophyletic",
-                                               TRUE ~ category_rhesus)) %>% 
+                                            !rhesus_monophyleticity ~ "not_monophyletic",
+                                            TRUE ~ category_rhesus)) %>% 
   dplyr::relocate(module_size, .before = "overall_connectivity") %>% 
   dplyr::relocate(human_diversity, .before = "residual_human") %>% 
   dplyr::relocate(chimp_diversity, .before = "residual_chimp") %>% 
   dplyr::relocate(gorilla_diversity, .before = "residual_gorilla") %>% 
   dplyr::relocate(rhesus_diversity, .before = "residual_rhesus") %>% 
   round_numeric_columns()
-saveRDS(module_properties_brain_data, here(wd, "suppl.table7_module_properties_brain_data.rds"))
+saveRDS(module_properties_brain_data, here(wd, "suppl.table6_module_properties_brain_data.rds"))
+                   
+
+## Supplementary table 7: target contributions - diff.data -----------------------------------
+
+target_contributions_diff_data <- readRDS(here("data/neural_differentiation_dataset/CroCoNet_analysis/target_contributions_overall.rds")) %>% 
+  dplyr::filter(type != "summary") %>% 
+  dplyr::transmute(regulator,
+                   gene_removed = ifelse(is.na(gene_removed), "none", gene_removed),
+                   within_species_diversity,
+                   total_tree_length,
+                   fit,
+                   lwr_fit,
+                   upr_fit,
+                   residual,
+                   contribution) %>% 
+  round_numeric_columns()
+saveRDS(target_contributions_diff_data, here(wd, "suppl.table7_target_contributions_diff_data.rds"))
 
 
 # Supplementary table 8: POU5F1 gRNAs ------------------------------------------------------------
@@ -304,7 +301,7 @@ POU5F1_gRNAs <- seu@meta.data  %>%
 saveRDS(POU5F1_gRNAs, here(wd, "suppl.table8_POU5F1_gRNAs.rds"))
 
 
-# Supplementary table 9: Control gRNAs -----------------------------------------------------------
+# Supplementary table 9: control gRNAs -----------------------------------------------------------
 
 control_gRNAs <- seu@meta.data  %>% 
   dplyr::filter(perturbed_TF == "NT_control") %>% 
@@ -319,7 +316,7 @@ control_gRNAs <- seu@meta.data  %>%
 saveRDS(control_gRNAs, here(wd, "suppl.table9_control_gRNAs.rds"))
 
 
-# Supplementary table 19: POU5F1 perturbation outcome --------------------------------------------
+# Supplementary table 10: POU5F1 perturbation outcome --------------------------------------------
 
 de_dr_results <- readRDS(here("data/validations/POU5F1_Perturb_seq_DE_analysis/de_results.rds")) %>% 
   dplyr::mutate(contrast = case_when(contrast == "human" ~ "DE_human",
@@ -339,11 +336,11 @@ col_df_table1 <- matrix(data = c(gsub("_iPSC|_NPC", "", colnames(experiments_and
                         nrow = 2, byrow = TRUE) %>% 
   as.data.frame()
 
-col_df_table3 <- matrix(data = c("regulator", rep("sequence_properties", 3), rep("expression_properties", 6), rep("binding_site_properties", 5), rep("network_properties", 3), rep("module_conservation_overall", 4), rep("module_conservation_human_lineage", 5), rep("module_conservation_gorilla_lineage", 5), colnames(module_properties_diff_data)[1:17], gsub("_overall|_human|_gorilla|_cynomolgus", "", colnames(module_properties_diff_data)[18:32])),
+col_df_table5 <- matrix(data = c("regulator", rep("sequence_properties", 3), rep("expression_properties", 6), rep("binding_site_properties", 5), rep("network_properties", 3), rep("module_conservation_overall", 4), rep("module_conservation_human_lineage", 5), rep("module_conservation_gorilla_lineage", 5), colnames(module_properties_diff_data)[1:17], gsub("_overall|_human|_gorilla|_cynomolgus", "", colnames(module_properties_diff_data)[18:32])),
                  nrow = 2, byrow = TRUE) %>% 
   as.data.frame()
 
-col_df_table7 <- matrix(data = c("regulator", "mean_expression", rep("network_properties", 3), rep("module_conservation_overall", 4), rep("module_conservation_human_lineage", 5), rep("module_conservation_chimp_lineage", 5), rep("module_conservation_gorilla_lineage", 5), rep("module_conservation_rhesus_lineage", 5), gsub("_overall|_human|_chimp|_gorilla|_rhesus|_marmoset", "", colnames(module_properties_brain_data))),
+col_df_table6 <- matrix(data = c("regulator", "mean_expression", rep("network_properties", 3), rep("module_conservation_overall", 4), rep("module_conservation_human_lineage", 5), rep("module_conservation_chimp_lineage", 5), rep("module_conservation_gorilla_lineage", 5), rep("module_conservation_rhesus_lineage", 5), gsub("_overall|_human|_chimp|_gorilla|_rhesus|_marmoset", "", colnames(module_properties_brain_data))),
                  nrow = 2, byrow = TRUE) %>% 
   as.data.frame()
 
@@ -355,26 +352,29 @@ openxlsx::writeData(wb, 'Experiments and cell lines', experiments_and_cell_lines
                     startRow = 3,
                     colNames = F)
 
+openxlsx::addWorksheet(wb, 'Replicates-brain. data')
+openxlsx::writeData(wb,'Replicates-brain. data', replicates_brain_data, colNames = T)
+
 openxlsx::addWorksheet(wb, 'Pruned modules-diff. data')
 openxlsx::writeData(wb,'Pruned modules-diff. data', pruned_modules_diff_data, colNames = T)
 
+openxlsx::addWorksheet(wb, 'Pruned modules-brain data')
+openxlsx::writeData(wb,'Pruned modules-brain data', pruned_modules_brain_data, colNames = T)
+
 openxlsx::addWorksheet(wb, 'Module properties-diff. data')
-openxlsx::writeData(wb,'Module properties-diff. data', col_df_table3, colNames = F)
+openxlsx::writeData(wb,'Module properties-diff. data', col_df_table5, colNames = F)
 openxlsx::writeData(wb,'Module properties-diff. data', module_properties_diff_data,
+                    startRow = 3,
+                    colNames = F)
+
+openxlsx::addWorksheet(wb, 'Module properties-brain data')
+openxlsx::writeData(wb,'Module properties-brain data', col_df_table6, colNames = F)
+openxlsx::writeData(wb,'Module properties-brain data', module_properties_brain_data,
                     startRow = 3,
                     colNames = F)
 
 openxlsx::addWorksheet(wb, 'Target contributions-diff. data')
 openxlsx::writeData(wb,'Target contributions-diff. data', target_contributions_diff_data, colNames = T)
-
-openxlsx::addWorksheet(wb, 'Pruned modules-brain data')
-openxlsx::writeData(wb,'Pruned modules-brain data', pruned_modules_brain_data, colNames = T)
-
-openxlsx::addWorksheet(wb, 'Module properties-brain data')
-openxlsx::writeData(wb,'Module properties-brain data', col_df_table7, colNames = F)
-openxlsx::writeData(wb,'Module properties-brain data', module_properties_brain_data,
-                    startRow = 3,
-                    colNames = F)
 
 openxlsx::addWorksheet(wb, 'POU5F1 gRNAs')
 openxlsx::writeData(wb,'POU5F1 gRNAs', POU5F1_gRNAs, colNames = T)

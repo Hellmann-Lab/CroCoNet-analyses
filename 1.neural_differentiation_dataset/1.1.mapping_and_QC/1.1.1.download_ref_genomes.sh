@@ -2,6 +2,7 @@
 
 # define project directory
 pd=/your/project/directory/
+mkdir -p $pd/data/neural_differentiation_dataset/genomes/
 cd $pd/data/neural_differentiation_dataset/genomes/
 
 # get hg38 genome sequence and annotation

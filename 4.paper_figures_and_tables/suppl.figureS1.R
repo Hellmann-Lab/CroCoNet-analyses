@@ -202,8 +202,8 @@ random_tree_stats <- readRDS(here(wd, "random_tree_stats.rds"))
 tree_stats_filt <- filterModuleTrees(tree_stats, random_tree_stats)
 
 # tree statistics (cor_kIM)
-tree_stats_cor_kIM <- readRDS(here(wd, "tree_stats_cor_kIM.rds"))
-random_tree_stats_cor_kIM <- readRDS(here(wd, "random_tree_stats_cor_kIM.rds"))
+tree_stats_cor_kIM <- readRDS(here("data/brain_dataset/CroCoNet_analysis_cor.kIM/tree_stats.rds"))
+random_tree_stats_cor_kIM <- readRDS(here("data/brain_dataset/CroCoNet_analysis_cor.kIM/random_tree_stats.rds"))
 tree_stats_filt_cor_kIM <- filterModuleTrees(tree_stats_cor_kIM, random_tree_stats_cor_kIM)
 
 # plot the total-tree length / within-species diversity ratio (the higher this ratio, the lower the contribution of the confounding factors)

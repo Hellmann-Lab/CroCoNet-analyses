@@ -15,10 +15,12 @@ library(here)
 library(ggtext)
 library(cowplot)
 library(CroCoNet)
+library(ggpubr)
 
 wd <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
 source(here("scripts/4.paper_figures_and_tables/helper_functions.R"))
 fig_dir <- here("data/paper_figures_and_tables/")
+dir.create(fig_dir)
 
 
 ## POU5F1 detailed pruning ----------------------------------------------
@@ -101,7 +103,7 @@ pruned_modules <- readRDS(here(wd, "pruned_modules.rds"))
 size <- pruned_modules %>%
   distinct(regulator, module_size) %>% 
   ggplot(aes(x = module_size)) +
-  geom_histogram(color = "grey20", linewidth = 0.1, fill = "#08635C") +
+  geom_histogram(color = "grey20", linewidth = 0.1, fill = "#08635C", bins = max(pruned_modules$module_size) - min(pruned_modules$module_size) + 1) +
   theme_bw(base_size = 15) +
   xlab("module size [number of genes]") +
   theme(plot.margin = margin(5.5, 20, 5.5, 5.5))

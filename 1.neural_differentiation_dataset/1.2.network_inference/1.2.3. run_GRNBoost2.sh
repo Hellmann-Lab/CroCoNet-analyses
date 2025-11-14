@@ -3,8 +3,6 @@
 # define project directory and working directory
 pd=/your/project/directory
 wd=$pd/data/neural_differentiation_dataset/network_inference
-
-# create output directory
 mkdir -p $wd/output
 
 # run GRNBoost2 per replicate (10 times each with 10 different seeds)

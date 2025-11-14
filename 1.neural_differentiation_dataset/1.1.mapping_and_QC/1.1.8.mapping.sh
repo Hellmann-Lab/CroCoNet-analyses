@@ -2,6 +2,9 @@
 
 # define project directory and working directory
 pd=/your/project/directory/
+mkdir -p $pd/data/neural_differentiation_dataset/mapping/hg38
+mkdir -p $pd/data/neural_differentiation_dataset/mapping/gorGor6
+mkdir -p $pd/data/neural_differentiation_dataset/mapping/macFas6
   
 # map reads to all genomes using zUMIs
 for genome in hg38 gorGor6 macFas6
@@ -14,6 +17,7 @@ do
 done
 
 # move count matrices from zUMIs output to a separate folder after zUMIs has finished
+mkdir -p $pd/data/neural_differentiation_dataset/count_matrices/
 for genome in hg38 gorGor6 macFas6
 do
   mv $pd/data/neural_differentiation_dataset/mapping/$genome/zUMIs_output/expression/$genome.dgecounts.rds $pd/data/neural_differentiation_dataset/count_matrices/$genome.dgecounts.rds

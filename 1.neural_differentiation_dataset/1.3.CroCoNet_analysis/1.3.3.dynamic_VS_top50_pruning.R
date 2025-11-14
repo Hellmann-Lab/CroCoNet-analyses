@@ -10,8 +10,9 @@ library(ggblend)
 library(ggsignif)
 library(ggtree)
 
-wd <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
-fig_dir <- here(wd, "figures/")
+dir_dynamic <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
+dir_top50 <- here("data/neural_differentiation_dataset/CroCoNet_analysis_top50/")
+fig_dir <- here(dir_top50, "figures/")
 
 
 ## cor.kIM distributions top50 ---------------------------------------------------
@@ -20,12 +21,12 @@ fig_dir <- here(wd, "figures/")
 replicate2species <- readRDS(here("data/neural_differentiation_dataset/processed_data/replicate2species.rds"))
 
 # preservation statistics (dynamic)
-pres_stats <- readRDS(here(wd, "pres_stats.rds"))
-random_pres_stats <- readRDS(here(wd, "random_pres_stats.rds"))
+pres_stats <- readRDS(here(dir_dynamic, "pres_stats.rds"))
+random_pres_stats <- readRDS(here(dir_dynamic, "random_pres_stats.rds"))
 
 # preservation statistics (top50)
-pres_stats_top50 <- readRDS(here(wd, "pres_stats_top50.rds"))
-random_pres_stats_top50 <- readRDS(here(wd, "random_pres_stats_top50.rds"))
+pres_stats_top50 <- readRDS(here(dir_top50, "pres_stats.rds"))
+random_pres_stats_top50 <- readRDS(here(dir_top50, "random_pres_stats.rds"))
 
 # split preservation scores by divergence time
 pres_stats_to_plot <- bind_rows(`actual modules` = pres_stats_top50,
@@ -59,13 +60,13 @@ ggsave(here(fig_dir, "cor_kIM_per_phylogenetic_distance_top50.png"), width = 6, 
 ## cor.kIM across-species and within-species dynamic VS top50 -------------------------
 
 # tree statistics (dynamic)
-tree_stats <- readRDS(here(wd, "tree_stats.rds"))
-random_tree_stats <- readRDS(here(wd, "random_tree_stats.rds"))
+tree_stats <- readRDS(here(dir_dynamic, "tree_stats.rds"))
+random_tree_stats <- readRDS(here(dir_dynamic, "random_tree_stats.rds"))
 tree_stats_filt <- filterModuleTrees(tree_stats, random_tree_stats)
 
 # tree statistics (top50)
-tree_stats_top50 <- readRDS(here(wd, "tree_stats_top50.rds"))
-random_tree_stats_top50 <- readRDS(here(wd, "random_tree_stats_top50.rds"))
+tree_stats_top50 <- readRDS(here(dir_top50, "tree_stats.rds"))
+random_tree_stats_top50 <- readRDS(here(dir_top50, "random_tree_stats.rds"))
 tree_stats_filt_top50 <- filterModuleTrees(tree_stats_top50, random_tree_stats_top50)
 
 # regulators removed
@@ -74,11 +75,11 @@ regulators_to_remove_top50 <- setdiff(tree_stats_top50$regulator, tree_stats_fil
 
 # data wrangling
 combined_pres_stats <-  dplyr::bind_rows("dynamic pruning" = dplyr::bind_rows("actual module" = pres_stats,
-                                                                    "random module" = random_pres_stats,
-                                                                    .id = "module_set"),
+                                                                              "random module" = random_pres_stats,
+                                                                              .id = "module_set"),
                                          "top50 pruning"= dplyr::bind_rows("actual module" = pres_stats_top50,
-                                                                    "random module" = random_pres_stats_top50,
-                                                                    .id = "module_set"),
+                                                                           "random module" = random_pres_stats_top50,
+                                                                           .id = "module_set"),
                                          .id = "pruning_method") %>% 
   dplyr::group_by(dplyr::across(dplyr::any_of(c("module_set", "regulator", "pruning_method")))) %>%
   dplyr::filter(sum(is.na(.data[["cor_kIM"]])) == 0) %>%
@@ -152,11 +153,11 @@ ggsave(here(fig_dir, "tree_stats_dynamic_vs_top50.png"), width = 5.8, height = 6
 
 # compare actual VS random
 random_vs_actual_pres <- dplyr::bind_rows("dynamic\npruning"= dplyr::bind_rows("actual module" = pres_stats,
-                                                                    "random module" = random_pres_stats,
-                                                                    .id = "module_set"),
+                                                                               "random module" = random_pres_stats,
+                                                                               .id = "module_set"),
                                          "top50\npruning" = dplyr::bind_rows("actual module" = pres_stats_top50,
-                                                                  "random module" = random_pres_stats_top50,
-                                                                  .id = "module_set"),
+                                                                             "random module" = random_pres_stats_top50,
+                                                                             .id = "module_set"),
                                          .id = "pruning_method") %>% 
   dplyr::select(pruning_method, module_set, regulator, replicate1, replicate2, species1, species2, cor_kIM) %>% 
   pivot_wider(names_from = "module_set", values_from = "cor_kIM") %>% 
@@ -175,7 +176,7 @@ p1 <- random_vs_actual_pres %>%
 p1
 
 # phylogenetic distances
-tree <- readRDS(here(wd, "tree.rds"))
+tree <- readRDS(here(dir_dynamic, "tree.rds"))
 phylo_dists <- ape::cophenetic.phylo(tree) %>%
   as.data.frame() %>%
   tibble::rownames_to_column("species1") %>%
@@ -231,9 +232,9 @@ ggsave(here(fig_dir, "dynamic_vs_top50.png"), width = 10, height = 3.5)
 ## Conservation ranking dynamic VS top50 ------------------------------------------------------------
 
 # load module conservation
-module_conservation_overall <- readRDS(here(wd, "module_conservation_overall.rds"))
+module_conservation_overall <- readRDS(here(dir_dynamic, "module_conservation_overall.rds"))
 
-module_conservation_overall_top50 <- readRDS(here(wd, "module_conservation_overall_top50.rds"))
+module_conservation_overall_top50 <- readRDS(here(dir_top50, "module_conservation_overall_top50.rds"))
 
 # get the 5 most conserved modules from the main analysis (using dynamic pruning)
 cons_modules <- module_conservation_overall %>% 
@@ -300,8 +301,8 @@ ggsave(here(fig_dir, "conservation_ranking_dynamic_vs_top50.png"), width = 12, h
 
 source(here("scripts/4.paper_figures_and_tables/helper_functions.R"))
 
-trees <- readRDS(here(wd, "trees.rds"))
-trees_top50 <- readRDS(here(wd, "trees_top50.rds"))
+trees <- readRDS(here(dir_dynamic, "trees.rds"))
+trees_top50 <- readRDS(here(dir_top50, "trees_top50.rds"))
 
 species_colors <- c("#c1df91", "#9BD5FF", "#E1B1FF")
 

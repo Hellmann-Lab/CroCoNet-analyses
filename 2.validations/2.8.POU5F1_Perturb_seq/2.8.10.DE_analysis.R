@@ -58,7 +58,7 @@ saveRDS(sce_downsampled, here(wd, "sce_downsampled2.rds"))
 
 # DE testing using dream
 de_results <- DE_testing_LMM(sce_downsampled)
-saveRDS(de_results, here(wd, "de_results2.rds"))
+saveRDS(de_results, here(wd, "de_results.rds"))
 
 # load POU5F1 module membership info
 all_genes <- readRDS(here("data/neural_differentiation_dataset/processed_data/genes.rds"))
@@ -75,8 +75,8 @@ p <- wrap_plots(p1 + theme(legend.position = "none"),
            p2 + guides(color = guide_legend(override.aes = list(size = 3, shape = 19, alpha = 1))),
            p3,
            widths = c(1, 1, 0.6))
-ggsave(here(wd, "figures/pou5f1_module_crispri_results2.png"), p, width = 13, height = 4, dpi = 600)
-ggsave(here(wd, "figures/pou5f1_module_crispri_results2.pdf"), p, width = 13, height = 4)
+ggsave(here(wd, "figures/pou5f1_module_crispri_results.png"), p, width = 13, height = 4, dpi = 600)
+ggsave(here(wd, "figures/pou5f1_module_crispri_results.pdf"), p, width = 13, height = 4)
 
 # test enrichment of DE genes in the CroCoNet POU5F1 module
 de_results_filt <- de_results %>%

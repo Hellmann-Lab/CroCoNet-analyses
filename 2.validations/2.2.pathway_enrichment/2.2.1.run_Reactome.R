@@ -8,7 +8,7 @@ library(here)
 
 dd <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
 wd <- here("data/validations/pathway_enrichment/")
-
+dir.create(wd)
 
 ## Load input data ------------------------------------------------------
 

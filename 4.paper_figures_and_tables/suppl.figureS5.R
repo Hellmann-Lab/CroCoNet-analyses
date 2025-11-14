@@ -7,7 +7,8 @@ library(patchwork)
 library(cowplot)
 library(here)
 
-wd <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
+dir_cor.kIM <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
+dir_cor.adj <- here("data/neural_differentiation_dataset/CroCoNet_analysis_cor.adj/")
 fig_dir <- here("data/paper_figures_and_tables/")
 
 
@@ -18,8 +19,8 @@ fig_dir <- here("data/paper_figures_and_tables/")
 replicate2species <- readRDS(here("data/neural_differentiation_dataset/processed_data/replicate2species.rds"))
 
 # preservation statistics
-pres_stats <- readRDS(here(wd, "pres_stats.rds"))
-random_pres_stats <- readRDS(here(wd, "random_pres_stats.rds"))
+pres_stats <- readRDS(here(dir_cor.kIM, "pres_stats.rds"))
+random_pres_stats <- readRDS(here(dir_cor.kIM, "random_pres_stats.rds"))
 
 # to plot
 pres_stats_to_plot <- bind_rows(`actual modules` = pres_stats,
@@ -52,13 +53,13 @@ p1
 ## Preservation within and across species cor.kIM Vs cor.adj -------------------------
 
 # tree statistics (cor_kIM)
-tree_stats <- readRDS(here(wd, "tree_stats.rds"))
-random_tree_stats <- readRDS(here(wd, "random_tree_stats.rds"))
+tree_stats <- readRDS(here(dir_cor.kIM, "tree_stats.rds"))
+random_tree_stats <- readRDS(here(dir_cor.kIM, "random_tree_stats.rds"))
 tree_stats_filt <- filterModuleTrees(tree_stats, random_tree_stats)
 
 # tree statistics (cor_adj)
-tree_stats_cor_adj <- readRDS(here(wd, "tree_stats_cor_adj.rds"))
-random_tree_stats_cor_adj <- readRDS(here(wd, "random_tree_stats_cor_adj.rds"))
+tree_stats_cor_adj <- readRDS(here(dir_cor.adj, "tree_stats.rds"))
+random_tree_stats_cor_adj <- readRDS(here(dir_cor.adj, "random_tree_stats.rds"))
 tree_stats_filt_cor_adj <- filterModuleTrees(tree_stats_cor_adj, random_tree_stats_cor_adj)
 
 # regulators removed
@@ -176,7 +177,7 @@ p4 <- random_vs_actual_pres %>%
 p4
 
 # phylogenetic distances
-tree <- readRDS(here(wd, "tree.rds"))
+tree <- readRDS(here(dir_cor.kIM, "tree.rds"))
 phylo_dists <- ape::cophenetic.phylo(tree) %>%
   as.data.frame() %>%
   tibble::rownames_to_column("species1") %>%

@@ -33,8 +33,12 @@ weights <- metadata %>%
 
 weights_per_cell <- metadata %>% 
   dplyr::mutate(weight = weights[species_stage],
-                weight = weight / sum(weight)) %>% 
-  dplyr::select(cell, weight)
+                weight_hg = ifelse(species == "cynomolgus", 0, weight),
+                weight_hc = ifelse(species == "gorilla", 0, weight),
+                weight = weight / sum(weight),
+                weight_hg = weight_hg / sum(weight_hg),
+                weight_hc = weight_hc / sum(weight_hc)) %>% 
+  dplyr::select(cell, weight, weight_hg, weight_hc)
 
 # logcounts
 logcnts <- logcounts(sce)
@@ -50,9 +54,13 @@ mean_expr <- weights_per_cell %>%
   group_by(regulator) %>% 
   dplyr::mutate(expr = logcnts[unique(regulator), cell]) %>% 
   ungroup() %>% 
-  dplyr::mutate(expr_weighted = weight*expr) %>% 
+  dplyr::mutate(expr_weighted = weight*expr,
+                expr_weighted_hg = weight_hg*expr,
+                expr_weighted_hc = weight_hc*expr) %>% 
   group_by(regulator) %>% 
-  dplyr::summarize(mean_expr = sum(expr_weighted)) %>%
+  dplyr::summarize(mean_expr = sum(expr_weighted),
+                   mean_expr_hg = sum(expr_weighted_hg),
+                   mean_expr_hc = sum(expr_weighted_hc)) %>%
   ungroup()
 saveRDS(mean_expr, here(wd, "mean_expr_regulators.rds"))
 
@@ -125,10 +133,24 @@ fit <- eBayes(fit)
 saveRDS(fit, here(wd, "dream_fit.rds"))
 
 # get LFCs and p-values per contrast
-de_results_df <- bind_rows(human = topTable(fit, coef="human", number=Inf, adjust="BH") %>% rownames_to_column("gene") ,
+de_results <- bind_rows(human = topTable(fit, coef="human", number=Inf, adjust="BH") %>% rownames_to_column("gene") ,
                            gorilla = topTable(fit, coef="gorilla", number=Inf, adjust="BH") %>% rownames_to_column("gene") ,
                            cynomolgus = topTable(fit, coef="cynomolgus", number=Inf, adjust="BH") %>% rownames_to_column("gene"),
                            gorilla_human = topTable(fit, coef="gorilla_human", number=Inf, adjust="BH") %>% rownames_to_column("gene"),
                            cynomolgus_human = topTable(fit, coef="cynomolgus_human", number=Inf, adjust="BH") %>% rownames_to_column("gene"),
                            .id = "contrast")
-saveRDS(de_results_df, here(wd, "de_results.rds"))
+saveRDS(de_results, here(wd, "de_results.rds"))
+
+# calculate expression pattern divergence
+expression_pattern_divergence <- de_results %>% 
+  dplyr::filter(gene %in% regulators) %>% 
+  dplyr::select(regulator = gene, contrast, logFC) %>% 
+  inner_join(mean_expr) %>% 
+  pivot_wider(names_from = "contrast", values_from = "logFC", names_prefix = "logFC_iPSC_NPC_") %>% 
+  dplyr::transmute(regulator,
+                   logFC_iPSC_NPC_human,
+                   logFC_iPSC_NPC_gorilla,
+                   logFC_iPSC_NPC_cynomolgus,
+                   expression_pattern_divergence_human_gorilla = abs(logFC_iPSC_NPC_gorilla_human) / mean_expr_hg,
+                   expression_pattern_divergence_human_cynomolgus = abs(logFC_iPSC_NPC_cynomolgus_human) / mean_expr_hc)
+saveRDS(expression_pattern_divergence, here(wd, "expression_pattern_divergence.rds"))

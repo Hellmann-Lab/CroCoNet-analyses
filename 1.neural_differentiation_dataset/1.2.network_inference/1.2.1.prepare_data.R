@@ -8,6 +8,7 @@ library(scuttle)
 library(transformGamPoi)
 
 wd <- here("data/neural_differentiation_dataset/network_inference/input/")
+dir.create(wd)
 
 
 # load SCE object

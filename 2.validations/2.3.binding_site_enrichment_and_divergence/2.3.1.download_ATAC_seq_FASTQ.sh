@@ -58,3 +58,26 @@ mv ERR12081961_1.fastq.gz cynomolgus_C2c1_NPC_r1.fastq.gz
 
 wget https://ftp.sra.ebi.ac.uk/vol1/fastq/ERR120/061/ERR12081961/ERR12081961_2.fastq.gz
 mv ERR12081961_2.fastq.gz cynomolgus_C2c1_NPC_r2.fastq.gz
+
+## expreiment 2, gorilla iPSC
+wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR156/029/ERR15665429/ERR15665429_1.fastq.gz
+mv ERR15665429_1.fastq.gz gorilla_G1c2_iPSC_r1.fastq.gz
+
+wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR156/029/ERR15665429/ERR15665429_2.fastq.gz
+mv ERR15665429_2.fastq.gz gorilla_G1c2_iPSC_r2.fastq.gz
+
+wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR156/030/ERR15665430/ERR15665430_1.fastq.gz
+mv ERR15665430_1.fastq.gz gorilla_G1c3_iPSC_r1.fastq.gz
+
+wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR156/030/ERR15665430/ERR15665430_2.fastq.gz
+mv ERR15665430_2.fastq.gz gorilla_G1c3_iPSC_r2.fastq.gz
+
+# experiment 2, cynomolgus iPSC
+wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR156/027/ERR15665427/ERR15665427_1.fastq.gz
+mv ERR15665427_1.fastq.gz cynomolgus_C1c3_iPSC_r1.fastq.gz
+
+wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR156/027/ERR15665427/ERR15665427_2.fastq.gz
+mv ERR15665427_2.fastq.gz cynomolgus_C1c3_iPSC_r2.fastq.gz
+
+
+

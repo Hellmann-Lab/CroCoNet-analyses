@@ -69,3 +69,51 @@ ltr7_near_pou5f1_module_members %>%
         legend.key.height = unit(1, 'cm')) +
   scale_x_discrete(limits = c(TRUE, FALSE), breaks = c(TRUE, FALSE), labels = c("POU5F1 module", "other"))
 ggsave(here(fig_dir, "ltr7_near_pou5f1_module_members.png"), width = 7, height = 4.5)
+
+# test enrichment of LTR7 elements
+ltr7_near_pou5f1_module_members <- ltr7_near_pou5f1_module_members %>% 
+  dplyr::mutate(pou5f1_module_member = factor(ifelse(pou5f1_module_member, "yes", "no"), c("yes", "no")))
+
+df1 <- ltr7_near_pou5f1_module_members %>% 
+  dplyr::mutate(ltr7 = ifelse(ltr7_type == "no_ltr7", "no", "yes")) %>% 
+  group_by(pou5f1_module_member) %>% 
+  dplyr::count(ltr7)
+
+table1 <- df1 %>% 
+  pivot_wider(names_from = "ltr7", values_from = "n") %>% 
+  arrange(desc(pou5f1_module_member)) %>% 
+  column_to_rownames("pou5f1_module_member") %>% 
+  as.matrix()
+
+fisher_test_result <- fisher.test(table1)
+fisher_test_result
+
+# test enrichment of POU5F1-bound LTR7 elements
+df2 <- ltr7_near_pou5f1_module_members %>% 
+  dplyr::mutate(ltr7 = ifelse(ltr7_type %in% c("no_ltr7", "ltr7_no_pou5f1"), "no", "yes")) %>% 
+  group_by(pou5f1_module_member) %>% 
+  dplyr::count(ltr7)
+
+table2 <- df2 %>% 
+  pivot_wider(names_from = "ltr7", values_from = "n") %>% 
+  arrange(desc(pou5f1_module_member)) %>% 
+  column_to_rownames("pou5f1_module_member") %>% 
+  as.matrix()
+
+fisher_test_result <- fisher.test(table2)
+fisher_test_result
+
+# test enrichment of POU5F1-bound LTR7 elements without a cynomolgus ortholog
+df3 <- ltr7_near_pou5f1_module_members %>% 
+  dplyr::mutate(ltr7 = ifelse(ltr7_type %in% c("no_ltr7", "ltr7_no_pou5f1", "ltr7_pou5f1_cyno_ortholog"), "no", "yes")) %>% 
+  group_by(pou5f1_module_member) %>% 
+  dplyr::count(ltr7)
+
+table3 <- df3 %>% 
+  pivot_wider(names_from = "ltr7", values_from = "n") %>% 
+  arrange(desc(pou5f1_module_member)) %>% 
+  column_to_rownames("pou5f1_module_member") %>% 
+  as.matrix()
+
+fisher_test_result <- fisher.test(table3)
+fisher_test_result

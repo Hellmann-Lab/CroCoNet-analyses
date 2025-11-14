@@ -3,7 +3,7 @@
 # define project directory and working directory
 pd=/your/project/directory/
 input_dir=$pd/data/validations/POU5F1_ChIP_seq_BAM
-output_dir=$pd/data/validations/POU5F1_ChIP_seq_peaks
+output_dir=$pd/data/validations/POU5F1_ChIP_seq
 mkdir -p $output_dir
 
 # blacklist from ENCODE for hg38

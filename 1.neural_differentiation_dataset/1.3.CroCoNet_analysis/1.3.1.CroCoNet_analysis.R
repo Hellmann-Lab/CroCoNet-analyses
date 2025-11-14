@@ -139,14 +139,14 @@ random_pres_stats <- summarizeJackknifeStats(random_pres_stats_jk)
 saveRDS(random_pres_stats, here(wd, "random_pres_stats.rds"))
 
 # plot preservation statistics
-plotPresStatDistributions(pres_stats, random_pres_stats, stats = c("cor_adj", "cor_kIM"))
-ggsave(here(wd, "figures/pres_stat_distributions.png"), width = 6.5, height = 4.2)
+plotPresStatDistributions(pres_stats, random_pres_stats, c("cor_adj", "cor_kIM"))
+ggsave(here(wd, "figures/pres_stat_distributions.png"), width = 6, height = 4.7)
 
 plotPresStats(pres_stats, random_pres_stats, c("cor_adj", "cor_kIM"))
-ggsave(here(wd, "figures/pres_stat_within_across_actual_random.png"), width = 9.5, height = 4.2)
+ggsave(here(wd, "figures/pres_stat_within_across_actual_random.png"), width = 9.5, height = 4.6)
 
 comparePresStats(pres_stats, random_pres_stats, tree)
-ggsave(here(wd, "figures/pres_stat_comparison.png"), width = 6, height = 3)
+ggsave(here(wd, "figures/pres_stat_comparison.png"), width = 6.5, height = 3.7)
 
 # calculate distances
 dist_jk <- convertPresToDist(pres_stats_jk, "cor_kIM", n_cores = 10)
@@ -341,6 +341,7 @@ ggsave(here(wd, "figures/module_conservation_human.png"), width = 7.4, height = 
 # get human-diverged modules
 human_div_modules <- module_conservation_human %>%
   dplyr::filter(conservation == "diverged") %>%
+  arrange(desc(residual)) %>% 
   pull(regulator) %>% 
   as.character()
 

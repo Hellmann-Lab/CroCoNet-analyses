@@ -5,7 +5,7 @@ library(ChIPseeker)
 library(here)
 library(plyranges)
 
-wd <- here("data/validations/POU5F1_ChIP_seq_peaks/")
+wd <- here("data/validations/POU5F1_ChIP_seq/")
 dir.create(here(wd, "figures"))
 
 

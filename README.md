@@ -4,7 +4,7 @@
 This repository contains the code to reproduce all analyses in the
 manuscript
 
-### **CroCoNet: a quantitative approach for comparing gene regulatory networks across species**
+### **CroCoNet: a novel framework for cross-species network analysis reveals POU5F1 (OCT4) rewiring**
 
 by Anita Térmeg, Johanna Geuder, Vladyslav Storozhuk, Zane Kliesmete,
 Fiona C. Edenhofer, Beate Vieth, Philipp Janssen, Ines Hellmann
@@ -14,11 +14,11 @@ Fiona C. Edenhofer, Beate Vieth, Philipp Janssen, Ines Hellmann
 The data necessary to reproduce this analysis can be found on
 ArrayExpress and GEO:
 
-| Accession                   | Dataset          |
-|-----------------------------|------------------|
-| E-MTAB-XXXXX                | scRNA-seq data   |
-| E-MTAB-13373 & E-MTAB-15654 | ATAC-seq data    |
-| GSE298717                   | Perturb-seq data |
+| Accession                                                                                                                                                               | Dataset          |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|
+| [E-MTAB-15695](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15695)                                                                                      | scRNA-seq data   |
+| [E-MTAB-13373](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-13373) & [E-MTAB-15654](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15654) | ATAC-seq data    |
+| [GSE298717](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE298717)                                                                                               | Perturb-seq data |
 
 To be able to smoothly run all analyses, please follow these steps:
 
@@ -27,6 +27,11 @@ To be able to smoothly run all analyses, please follow these steps:
 2.  Clone this Github repository to a subdirectory “scripts”
 
 3.  Download the linked Zenodo repository to a subdirectory “data”
+
+CroCoNet – the framework these analyses are based on – is available as
+an [R package](https://github.com/Hellmann-Lab/CroCoNet), accompanied by
+[detailed documentation and a step-by-step
+tutorial](https://hellmann-lab.github.io/CroCoNet/).
 
 ### 1. Neural differentiation dataset
 

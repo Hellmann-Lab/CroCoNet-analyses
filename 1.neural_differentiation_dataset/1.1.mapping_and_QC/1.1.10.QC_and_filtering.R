@@ -22,6 +22,9 @@ library(SummarizedExperiment)
 library(here)
 
 wd <- here("data/neural_differentiation_dataset/processed_data")
+dir.create(wd)
+fig_dir <- here(wd, "figures")
+dir.create(fig_dir)
 
 
 ## Metadata and expression data ---------------------------------------------
@@ -104,6 +107,7 @@ mapping_fractions %>%
   theme(legend.title = element_blank()) +
   xlab("% of reads") +
   ggtitle("Mapping fractions")
+ggsave(here(fig_dir, "mapping_fractions_overall.png"), width = 7, height = 3)
 
 
 ## QC metrics ----------------------------------------------------
@@ -223,6 +227,7 @@ p4 <- qc_stats %>%
 p4
 
 p1 | p2 | p3 | p4
+ggsave(here(fig_dir, "QC.png"), width = 12, height = 4)
 
 
 ## Cell filtering ---------------------------------------------------------------
@@ -274,6 +279,7 @@ metadata %>%
                             n = cumsum(n)),
             aes(label = label), nudge_y = 50) +
   ylab("number of cells")
+ggsave(here(fig_dir, "cell_numbers_QCFilt.png"), width = 5, height = 4)
 
 
 ## Gene filtering ----------------------------------------------------------
@@ -581,6 +587,7 @@ colData(sce) %>%
   facet_grid(species~.) +
   scale_fill_manual(values = ct_colors, name = "Celltype (ref: Rhodes et al.)") +
   ylab("fraction of cells")
+ggsave(here(fig_dir, "cell_type_proportions_QCfilt.png"), width = 7, height = 4.5)
 
 
 ## Pseudotime inference -------------------------------------------------
@@ -609,22 +616,22 @@ trajectory <- infer_trajectory(low_dim_space)
 
 # plot pseudotime trajectory
 ## colored by pseudotime
-draw_trajectory_plot(low_dim_space,
-                     progression_group = trajectory$time,
-                     point_size = 0.2,
-                     point_alpha = 0.5,
-                     trajectory$path) +
+p1 <- draw_trajectory_plot(low_dim_space,
+                           progression_group = trajectory$time,
+                           point_size = 0.2,
+                           point_alpha = 0.5,
+                           trajectory$path) +
   labs(col = "pseudotime") +
   viridis::scale_color_viridis(option = "D") +
   theme_bw(base_size = 6) +
   theme(legend.key.height = unit(0.75, "line"))
 
 ## colored by day
-draw_trajectory_plot(low_dim_space,
-                     progression_group = sce$day,
-                     point_size = 0.2,
-                     point_alpha = 0.5,
-                     trajectory$path) +
+p2 <- draw_trajectory_plot(low_dim_space,
+                           progression_group = sce$day,
+                           point_size = 0.2,
+                           point_alpha = 0.5,
+                           trajectory$path) +
   labs(col = "day") +
   scale_color_manual(values = c("#01665e","#5ab4ac", "#B5E3DC","#F2DEA6", "#d8b365", "#8c510a")) +
   theme_bw(base_size = 6) +
@@ -632,11 +639,11 @@ draw_trajectory_plot(low_dim_space,
   guides(color = guide_legend(override.aes = list(alpha = 1) ) )
 
 ## colored by species
-draw_trajectory_plot(low_dim_space,
-                     progression_group = sce$species,
-                     point_size = 0.2,
-                     point_alpha = 0.5,
-                     trajectory$path) +
+p3 <- draw_trajectory_plot(low_dim_space,
+                           progression_group = sce$species,
+                           point_size = 0.2,
+                           point_alpha = 0.5,
+                           trajectory$path) +
   labs(col = "species") +
   scale_color_manual(values = species_colors) +
   theme_bw(base_size = 6) +
@@ -644,11 +651,11 @@ draw_trajectory_plot(low_dim_space,
   guides(color = guide_legend(override.aes = list(alpha = 1) ) )
 
 ## colored by replicate
-draw_trajectory_plot(low_dim_space,
-                     progression_group = sce$replicate,
-                     point_size = 0.2,
-                     point_alpha = 0.5,
-                     trajectory$path) +
+p4 <- draw_trajectory_plot(low_dim_space,
+                           progression_group = sce$replicate,
+                           point_size = 0.2,
+                           point_alpha = 0.5,
+                           trajectory$path) +
   labs(col = "clone") +
   scale_color_manual(values = replicate_colors) +
   theme_bw(base_size = 6) +
@@ -656,16 +663,19 @@ draw_trajectory_plot(low_dim_space,
   guides(color = guide_legend(override.aes = list(alpha = 1) ) )
 
 ## colored by cell type
-draw_trajectory_plot(low_dim_space,
-                     progression_group = sce$cell_type,
-                     point_size = 0.2,
-                     point_alpha = 0.5,
-                     trajectory$path) +
+p5 <- draw_trajectory_plot(low_dim_space,
+                           progression_group = sce$cell_type,
+                           point_size = 0.2,
+                           point_alpha = 0.5,
+                           trajectory$path) +
   labs(col = "clone") +
   scale_color_manual(values = ct_colors) +
   theme_bw(base_size = 6) +
   theme(legend.key.height = unit(0.5,"line")) +
   guides(color = guide_legend(override.aes = list(alpha = 1) ) )
+
+(p1 + p2 + p3) / (p4 + p5 + plot_spacer())
+ggsave(here(fig_dir, "pseudotime_trajectory_QCFilt.png"), height = 4, width = 11)
 
 # add pseudotime to SCE objects
 sce$pseudotime <- trajectory$time
@@ -681,13 +691,14 @@ sce_batch_corr <- runUMAP(sce_batch_corr, exprs_values = "reconstructed")
 # plot UMAPs with cell types
 plotReducedDim(sce_batch_corr, dimred = "UMAP", colour_by = "cell_type", point_size = 0.5, point_alpha = 0.5) + theme_bw() + scale_color_manual(values = ct_colors, name = "cell type")
 
-# cells to remove based on different criteria
+# cells to remove
 sce_batch_corr$remove_ct <- sce_batch_corr$cell_type %in% c("Mesoderm", "Endothelial_Cells", "Endoderm", "Neural_Crest")
 sce_batch_corr$remove_clust  <- (sce_batch_corr$replicate %in% c("C1c1", "C1c2")) & (sce_batch_corr$day == "7")
 
-# cells to remove (final)
+# plot cells to remove
 plotReducedDim(sce_batch_corr, dimred = "UMAP", colour_by = "remove_ct", point_size = 0.5, point_alpha = 0.5) + theme_bw() + scale_color_manual(values = c("red2", "grey70"), limits = c(T, F), guide = "none") + labs(title = "Cells to remove", subtitle = "Non-neural cell types") |
   plotReducedDim(sce_batch_corr, dimred = "UMAP", colour_by = "remove_clust", point_size = 0.5, point_alpha = 0.5) + theme_bw() + scale_color_manual(values = c("red2", "grey70"), limits = c(T, F), guide = "none") + labs(subtitle = "Day 7 cells of replicates C1c1 and C1c2")
+ggsave(here(fig_dir, "/UMAPs_cellsToRemove.png"), width = 10, height = 5)
 
 
 ## Remove cells that differentiated in the wrong direction --------------
@@ -717,6 +728,7 @@ metadata %>%
                             n = cumsum(n)),
             aes(label = label), nudge_y = 50) +
   ylab("number of cells")
+ggsave(here(fig_dir, "cell_numbers_QCFilt_cellTypeFilt.png"), width = 5, height = 4)
 
 # counts
 cnts_per_replicate <- foreach(replicate_name = replicate_names,
@@ -796,7 +808,7 @@ colData(sce) %>%
   facet_grid(species~.) +
   scale_fill_manual(values = ct_colors, name = "cell type") +
   ylab("fraction of cells")
-
+ggsave(here(fig_dir, "cell_type_proportions_QCFilt_cellTypeFilt.png"), width = 7, height = 4.5)
 
 ## Pseudotime inference II -------------------------------------------------
 
@@ -824,22 +836,22 @@ trajectory <- infer_trajectory(low_dim_space)
 
 # plot pseudotime trajectory
 ## colored by pseudotime
-draw_trajectory_plot(low_dim_space,
-                     progression_group = trajectory$time,
-                     point_size = 0.2,
-                     point_alpha = 0.5,
-                     trajectory$path) +
+p1 <- draw_trajectory_plot(low_dim_space,
+                           progression_group = trajectory$time,
+                           point_size = 0.2,
+                           point_alpha = 0.5,
+                           trajectory$path) +
   labs(col = "pseudotime") +
   viridis::scale_color_viridis(option = "D") +
   theme_bw(base_size = 6) +
   theme(legend.key.height = unit(0.75, "line"))
 
 ## colored by day
-draw_trajectory_plot(low_dim_space,
-                     progression_group = sce$day,
-                     point_size = 0.2,
-                     point_alpha = 0.5,
-                     trajectory$path) +
+p2 <- draw_trajectory_plot(low_dim_space,
+                           progression_group = sce$day,
+                           point_size = 0.2,
+                           point_alpha = 0.5,
+                           trajectory$path) +
   labs(col = "day") +
   scale_color_manual(values = c("#01665e","#5ab4ac", "#B5E3DC","#F2DEA6", "#d8b365", "#8c510a")) +
   theme_bw(base_size = 6) +
@@ -847,11 +859,11 @@ draw_trajectory_plot(low_dim_space,
   guides(color = guide_legend(override.aes = list(alpha = 1) ) )
 
 ## colored by species
-draw_trajectory_plot(low_dim_space,
-                     progression_group = sce$species,
-                     point_size = 0.2,
-                     point_alpha = 0.5,
-                     trajectory$path) +
+p3 <- draw_trajectory_plot(low_dim_space,
+                           progression_group = sce$species,
+                           point_size = 0.2,
+                           point_alpha = 0.5,
+                           trajectory$path) +
   labs(col = "species") +
   scale_color_manual(values = species_colors) +
   theme_bw(base_size = 6) +
@@ -859,11 +871,11 @@ draw_trajectory_plot(low_dim_space,
   guides(color = guide_legend(override.aes = list(alpha = 1) ) )
 
 ## colored by replicate
-draw_trajectory_plot(low_dim_space,
-                     progression_group = sce$replicate,
-                     point_size = 0.2,
-                     point_alpha = 0.5,
-                     trajectory$path) +
+p4 <- draw_trajectory_plot(low_dim_space,
+                           progression_group = sce$replicate,
+                           point_size = 0.2,
+                           point_alpha = 0.5,
+                           trajectory$path) +
   labs(col = "clone") +
   scale_color_manual(values = replicate_colors) +
   theme_bw(base_size = 6) +
@@ -871,16 +883,19 @@ draw_trajectory_plot(low_dim_space,
   guides(color = guide_legend(override.aes = list(alpha = 1) ) )
 
 ## colored by cell type
-draw_trajectory_plot(low_dim_space,
-                     progression_group = sce$cell_type,
-                     point_size = 0.2,
-                     point_alpha = 0.5,
-                     trajectory$path) +
+p5 <- draw_trajectory_plot(low_dim_space,
+                           progression_group = sce$cell_type,
+                           point_size = 0.2,
+                           point_alpha = 0.5,
+                           trajectory$path) +
   labs(col = "clone") +
   scale_color_manual(values = ct_colors) +
   theme_bw(base_size = 6) +
   theme(legend.key.height = unit(0.5,"line")) +
   guides(color = guide_legend(override.aes = list(alpha = 1) ) )
+
+(p1 + p2 + p3) / (p4 + p5 + plot_spacer())
+ggsave(here(fig_dir, "pseudotime_trajectory_QCFilt_cellTypeFilt.png"), height = 4, width = 11)
 
 # add pseudotime to SCE objects
 sce$pseudotime <- trajectory$time
