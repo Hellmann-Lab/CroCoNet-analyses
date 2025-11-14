@@ -1,11 +1,11 @@
-here::i_am("scripts/2.validations/2.8.POU5F1_Perturb_seq/2.8.9.stemness_scores_and_knockdown_efficiencies.R")
+here::i_am("scripts/2.validations/2.8.POU5F1_CRISPRi/2.8.9.stemness_scores_and_knockdown_efficiencies.R")
 
 library(tidyverse)
 library(foreach)
 library(doParallel)
 library(here)
 
-wd <- here("data/validations/POU5F1_Perturb_seq_processed_data/")
+wd <- here("data/validations/POU5F1_CRISPRi_processed_data/")
 
 
 ## Subsetting POU5F1-perturbed and control cells --------------------------------------

@@ -259,7 +259,7 @@ analysis</em>
 </p>
 
 - [Calculate POU5F1 ChIP-seq enrichment near POU5F1 module
-  members](2.validations/2.6.2.6.8.calculate_enrichment_near_POU5F1_module_members.R)
+  members](2.validations/2.6.8.calculate_enrichment_near_POU5F1_module_members.R)
 
 </details>
 <details>
@@ -276,31 +276,31 @@ analysis</em>
 </details>
 <details>
 <summary>
-<strong>Analysis of POU5F1 Perturb-seq data</strong>
+<strong>Analysis of POU5F1 single-cell CRISPRi data</strong>
 </summary>
 
 - [Annotate dCas9
-  cassette](2.validations/2.8.POU5F1_Perturb_seq/2.8.1.annotate_dCas9_cassette.R)
+  cassette](2.validations/2.8.POU5F1_CRISPRi/2.8.1.annotate_dCas9_cassette.R)
 - [Create reference genome sequences and annotations with the dCas9
-  cassette](2.validations/2.8.POU5F1_Perturb_seq/2.8.2.create_ref_genomes_with_dCas9_casette.sh)
+  cassette](2.validations/2.8.POU5F1_CRISPRi/2.8.2.create_ref_genomes_with_dCas9_casette.sh)
 - [Download FASTQ files of Pertub-seq
-  data](2.validations/2.8.POU5F1_Perturb_seq/2.8.3.download_FASTQ.sh)
-- [Map Perturb-seq reads using
-  CellRanger](2.validations/2.8.POU5F1_Perturb_seq/2.8.4.mapping.sh)
+  data](2.validations/2.8.POU5F1_CRISPRi/2.8.3.download_FASTQ.sh)
+- [Map reads using
+  CellRanger](2.validations/2.8.POU5F1_CRISPRi/2.8.4.mapping.sh)
   - [Mapping worker
-    script](2.validations/2.8.POU5F1_Perturb_seq/mapping_per_lane_and_genome.sh)
+    script](2.validations/2.8.POU5F1_CRISPRi/mapping_per_lane_and_genome.sh)
 - [Species
-  demultiplexing](2.validations/2.8.POU5F1_Perturb_seq/2.8.5.species_demultiplexing.sh)
+  demultiplexing](2.validations/2.8.POU5F1_CRISPRi/2.8.5.species_demultiplexing.sh)
   - [Species demultiplexing worker
-    script](2.validations/2.8.POU5F1_Perturb_seq/species_demultiplexing_per_lane_and_genome.sh)
+    script](2.validations/2.8.POU5F1_CRISPRi/species_demultiplexing_per_lane_and_genome.sh)
 - [Identify the cells of each
-  species](2.validations/2.8.POU5F1_Perturb_seq/2.8.6.get_cells_per_species.R)
+  species](2.validations/2.8.POU5F1_CRISPRi/2.8.6.get_cells_per_species.R)
 - [Individual
-  demultiplexing](2.validations/2.8.POU5F1_Perturb_seq/2.8.7.individual_demultiplexing.sh)
+  demultiplexing](2.validations/2.8.POU5F1_CRISPRi/2.8.7.individual_demultiplexing.sh)
   - [Individual demultiplexing worker
-    script](2.validations/2.8.POU5F1_Perturb_seq/indiv_demultiplexing_per_lane_and_genome.sh)
+    script](2.validations/2.8.POU5F1_CRISPRi/indiv_demultiplexing_per_lane_and_genome.sh)
 - [QC &
-  filtering](2.validations/2.8.POU5F1_Perturb_seq/2.8.8.QC_and_filtering.R)
+  filtering](2.validations/2.8.POU5F1_CRISPRi/2.8.8.QC_and_filtering.R)
 
 <p style="margin: -1em 0 0em 2em;">
 <em>Start here to skip computationally intensive steps and jump to core
@@ -308,11 +308,10 @@ analysis</em>
 </p>
 
 - [Stemness scores & knockdown
-  efficiencies](2.validations/2.8.POU5F1_Perturb_seq/2.8.9.stemness_scores_and_knockdown_efficiencies.R)
-- [DE
-  analysis](2.validations/2.8.POU5F1_Perturb_seq/2.8.10.DE_analysis.R)
+  efficiencies](2.validations/2.8.POU5F1_CRISPRi/2.8.9.stemness_scores_and_knockdown_efficiencies.R)
+- [DE analysis](2.validations/2.8.POU5F1_CRISPRi/2.8.10.DE_analysis.R)
 - [Helper
-  functions](2.validations/2.8.POU5F1_Perturb_seq/helper_functions.R)
+  functions](2.validations/2.8.POU5F1_CRISPRi/helper_functions.R)
 
 </details>
 

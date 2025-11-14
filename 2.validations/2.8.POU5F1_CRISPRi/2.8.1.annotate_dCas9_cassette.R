@@ -1,5 +1,4 @@
 
-setwd("/data/share/htp/perturb-seq/genome_data")
 
 ## Annotate human insert ------------------------------------------------
 

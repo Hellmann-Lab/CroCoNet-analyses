@@ -1,4 +1,4 @@
-here::i_am("scripts/2.validations/2.8.POU5F1_Perturb_seq/2.8.9.DE_analysis.R")
+here::i_am("scripts/2.validations/2.8.POU5F1_CRISPRi/2.8.9.DE_analysis.R")
 
 library(tidyverse)
 library(SingleCellExperiment)
@@ -15,15 +15,15 @@ library(Seurat)
 library(here)
 library(ggh4x)
 
-wd <- here("data/validations/POU5F1_Perturb_seq_DE_analysis/")
+wd <- here("data/validations/POU5F1_CRISPRi_DE_analysis/")
 dir.create(here(wd, "figures"))
 
 
 # load helper functions
-source(here("scripts/2.validations/2.8.POU5F1_Perturb_seq/helper_functions2.R"))
+source(here("scripts/2.validations/2.8.POU5F1_CRISPRi/helper_functions2.R"))
 
 # load Seurat object
-seu <- readRDS(here("data/validations/POU5F1_Perturb_seq_processed_data/seu.rds"))
+seu <- readRDS(here("data/validations/POU5F1_CRISPRi_processed_data/seu.rds"))
 
 # metadata
 metadata <- seu@meta.data

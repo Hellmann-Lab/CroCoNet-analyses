@@ -1,4 +1,4 @@
-here::i_am("scripts/2.validations/2.8.POU5F1_Perturb_seq/2.8.8.QC_and_filtering.R")
+here::i_am("scripts/2.validations/2.8.POU5F1_CRISPRi/2.8.8.QC_and_filtering.R")
 
 library(tidyverse)
 library(BPCells)
@@ -35,17 +35,17 @@ library(gelnet)
 
 
 # set working directory
-wd <- here("data/validations/POU5F1_Perturb_seq_processed_data")
+wd <- here("data/validations/POU5F1_CRISPRi_processed_data")
 dir.create(here(wd, "figures"))
 
 # load helper functions
-source("scripts/2.validations/2.8.POU5F1_Perturb_seq/helper_functions.R")
+source("scripts/2.validations/2.8.POU5F1_CRISPRi/helper_functions.R")
 
 
 ## Cell filter 1: assigned to individuals & Gene filter 1: lifted-off to macaque --------
 
 # all IDs (experiment x chip x lane)
-ids <- read_delim(here("data/validations/POU5F1_Perturb_seq_sample_info/ids.txt"), delim = "\t")[[1]]
+ids <- read_delim(here("data/validations/POU5F1_CRISPRi_sample_info/ids.txt"), delim = "\t")[[1]]
 
 # load the indiivdual demultiplexing results
 indiv_assignment <- foreach(id = ids,
@@ -53,7 +53,7 @@ indiv_assignment <- foreach(id = ids,
   foreach(genome = c("hg38", "macFas6"),
           .combine = bind_rows) %do% {
             
-            demux_res2 <- read_delim(here(paste0("data/validations/POU5F1_Perturb_seq_individual_demux/", genome, "_", id, "/vireo/donor_ids.tsv")), delim = "\t") %>% 
+            demux_res2 <- read_delim(here(paste0("data/validations/POU5F1_CRISPRi_individual_demux/", genome, "_", id, "/vireo/donor_ids.tsv")), delim = "\t") %>% 
               dplyr::mutate(lane = id,
                             species = ifelse(genome == "hg38", "human", "cynomolgus"),
                             gen = genome,
@@ -91,12 +91,12 @@ indiv_assignment_filt <- indiv_assignment %>%
 cells_to_keep <- split(indiv_assignment_filt$cell, indiv_assignment_filt$genXid)
 
 # genes to keep (unified) - annotated in both the hg38 and the macFas6 GTF
-hg38_gtf <- plyranges::read_gff(here("data/validations/POU5F1_Perturb_seq_genomes/GRCh38_withdCas9/genes/genes.gtf"))
+hg38_gtf <- plyranges::read_gff(here("data/validations/POU5F1_CRISPRi_genomes/GRCh38_withdCas9/genes/genes.gtf"))
 hg38_genes <- hg38_gtf %>% 
   as_tibble() %>% 
   pull(gene_name) %>% 
   unique()
-macFas6_genes <- plyranges::read_gff(here("data/validations/POU5F1_Perturb_seq_genomes/macFas6_withdCas9/genes/genes.gtf")) %>% 
+macFas6_genes <- plyranges::read_gff(here("data/validations/POU5F1_CRISPRi_genomes/macFas6_withdCas9/genes/genes.gtf")) %>% 
   as_tibble() %>% 
   pull(gene_name) %>% 
   unique()
@@ -112,7 +112,7 @@ cnts <- foreach(id = ids,
           .combine = cbind) %do% {
             
             # load 
-            cnts_id <- Read10X_h5(here(paste0("data/validations/POU5F1_Perturb_seq_mapping/", genome, "_", id, "/outs/filtered_feature_bc_matrix.h5")), unique.features = FALSE)[[1]]
+            cnts_id <- Read10X_h5(here(paste0("data/validations/POU5F1_CRISPRi_mapping/", genome, "_", id, "/outs/filtered_feature_bc_matrix.h5")), unique.features = FALSE)[[1]]
             
             # filter genes and cells
             cnts_id <- cnts_id[rownames(cnts_id) %in% genes_to_keep, cells_to_keep[[paste0(genome, "_", id)]]]
@@ -144,10 +144,10 @@ cnts <- BPCells::convert_matrix_type(cnts, "uint32_t")
 
 # write on disk
 BPCells::write_matrix_dir(mat = cnts,
-                          dir = here("data/validations/POU5F1_Perturb_seq_bpcells"))
+                          dir = here("data/validations/POU5F1_CRISPRi_bpcells"))
 
 # access from disk
-cnts_disk <- BPCells::open_matrix_dir(dir = here("data/validations/POU5F1_Perturb_seq_bpcells"))
+cnts_disk <- BPCells::open_matrix_dir(dir = here("data/validations/POU5F1_CRISPRi_bpcells"))
 
 # metadata
 metadata <- indiv_assignment_filt %>% 
@@ -224,7 +224,7 @@ dim(seu)
 ## dCas9 detection ------------------------------------------------------
 
 # names of features on insert
-insert_features <- read_gff(here("data/validations/POU5F1_Perturb_seq_genomes/pAAVS1_TetOn_zKRAB_dCas9_P2A_mCherry_insert.gtf")) %>% 
+insert_features <- read_gff(here("data/validations/POU5F1_CRISPRi_genomes/pAAVS1_TetOn_zKRAB_dCas9_P2A_mCherry_insert.gtf")) %>% 
   as_tibble() %>% 
   pull(gene_id) %>% 
   unique()
@@ -307,7 +307,7 @@ dim(seu)
 gRNAs_detected <- foreach(id = ids,
                      .combine = bind_rows) %do% {
                        
-                       read_csv(here(paste0("data/validations/POU5F1_Perturb_seq_mapping/hg38_", id, "/outs/crispr_analysis/protospacer_calls_per_cell.csv"))) %>% 
+                       read_csv(here(paste0("data/validations/POU5F1_CRISPRi_mapping/hg38_", id, "/outs/crispr_analysis/protospacer_calls_per_cell.csv"))) %>% 
                          dplyr::mutate(cell = paste0(id, "_", cell_barcode)) %>% 
                          dplyr::select(-cell_barcode)
                        
@@ -325,7 +325,7 @@ gRNAs_detected <- foreach(id = ids,
 saveRDS(gRNAs_detected, here(wd, "gRNAs_detected.rds"))
 
 # load info about gRNA libraries
-gRNA_libraries <- readRDS(here("data/validations/POU5F1_Perturb_seq_sample_info/gRNA_libraries.rds"))
+gRNA_libraries <- readRDS(here("data/validations/POU5F1_CRISPRi_sample_info/gRNA_libraries.rds"))
 
 # summarize gRNAs that feature for both species
 gRNA_libraries_sum <- gRNA_libraries %>% 
