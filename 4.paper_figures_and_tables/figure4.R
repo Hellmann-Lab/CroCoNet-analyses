@@ -75,10 +75,10 @@ p2
 ## Perturb-seq UMAP -----------------------------------------------------
 
 # load helper functions
-source(here("scripts/2.validations/2.8.POU5F1_Perturb_seq/helper_functions.R"))
+source(here("scripts/2.validations/2.8.POU5F1_CRISPRi/helper_functions.R"))
 
 # load Seurat object
-seu <- readRDS(here("data/validations/POU5F1_Perturb_seq_processed_data/seu.rds"))
+seu <- readRDS(here("data/validations/POU5F1_CRISPRi_processed_data/seu.rds"))
 
 # plot UMAPs
 p3 <- plot_umap_split2(seu, "gRNAs_of_interest", "species", c("best POU5F1\ngRNA pair" = "maroon", "other POU5F1\ngRNAs" = "grey40", "control" = "grey70"), "umap_per_species", point_size = 1, legend_title = "") +
@@ -108,9 +108,9 @@ all_genes <- readRDS(here("data/neural_differentiation_dataset/processed_data/ge
 pruned_modules <- readRDS(here("data/neural_differentiation_dataset/CroCoNet_analysis/pruned_modules.rds"))
 
 # load Perturb-seq results
-de_results <- readRDS(here("data/validations/POU5F1_Perturb_seq_DE_analysis/de_results.rds"))
+de_results <- readRDS(here("data/validations/POU5F1_CRISPRi_DE_analysis/de_results.rds"))
 
-sce_downsampled <- readRDS(here("data/validations/POU5F1_Perturb_seq_DE_analysis/sce_downsampled.rds"))
+sce_downsampled <- readRDS(here("data/validations/POU5F1_CRISPRi_DE_analysis/sce_downsampled.rds"))
 
 # number of positively correlated POU5F1 module genes, negatively correlated POU5F1 module genes and non-module genes in the network and in the Perturb-seq data
 dir <- data.frame(target = all_genes) %>% 
