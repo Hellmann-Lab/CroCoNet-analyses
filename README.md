@@ -18,7 +18,7 @@ ArrayExpress and GEO:
 |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|
 | [E-MTAB-15695](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15695)                                                                                      | scRNA-seq data           |
 | [E-MTAB-13373](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-13373) & [E-MTAB-15654](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15654) | ATAC-seq data            |
-| [GSE298717](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE298717) (currently private)                                                                           | Single-cell CRISPRi data |
+| [GSE298717](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE298717) (currently private)                                                                           | single-cell CRISPRi data |
 
 To be able to smoothly run all analyses, please follow these steps:
 
