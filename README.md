@@ -1,6 +1,8 @@
 
 # CroCoNet analyses
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17610308.svg)](https://doi.org/10.5281/zenodo.17610308)
+
 This repository contains the code to reproduce all analyses in the
 manuscript
 
