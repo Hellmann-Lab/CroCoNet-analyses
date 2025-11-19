@@ -12,9 +12,7 @@ knitr::opts_chunk$set(
 
 # CroCoNet analyses
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17610308.svg)](https://doi.org/10.5281/zenodo.17610308)
-
-This repository contains the code to reproduce all analyses in the manuscript 
+This repository contains the code to reproduce all analyses in the following manuscript:
 
 #### [**CroCoNet: a novel framework for cross-species network analysis reveals POU5F1 (OCT4) rewiring**](https://www.biorxiv.org/content/10.1101/2025.11.18.689002v1) 
 
@@ -22,7 +20,9 @@ by Anita Térmeg, Johanna Geuder, Vladyslav Storozhuk, Zane Kliesmete, Fiona C. 
 
 # <img src="pipeline.png" align="center" width="1000" />
 
-The data necessary to reproduce this analysis can be found on ArrayExpress and GEO:
+CroCoNet -- the framework underlying these analyses -- is available as an [R package](https://github.com/Hellmann-Lab/CroCoNet), accompanied by [detailed documentation and a step-by-step tutorial](https://hellmann-lab.github.io/CroCoNet/).
+
+The raw data necessary to reproduce these analyses can be found on ArrayExpress and GEO:
 
 | Accession    | Dataset                                         |
 |--------------|-------------------------------------------------|
@@ -30,16 +30,17 @@ The data necessary to reproduce this analysis can be found on ArrayExpress and G
 | [E-MTAB-13373](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-13373) & [E-MTAB-15654](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15654) | ATAC-seq data |
 | [GSE298717](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE298717) (currently private) | single-cell CRISPRi data |
 
+Processed data files have been deposited to Zenodo:
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17610308.svg)](https://doi.org/10.5281/zenodo.17610308)
+
 To be able to smoothly run all analyses, please follow these steps:
 
 1. Start a new R project in a new directory
 
-2. Clone this Github repository to a subdirectory "scripts"
+2. Clone this Github repository to a subdirectory <tt>scripts</tt>
 
-3. Download the linked Zenodo repository to a subdirectory "data"
-
-CroCoNet -- the framework underlying these analyses -- is available as an [R package](https://github.com/Hellmann-Lab/CroCoNet), accompanied by [detailed documentation and a step-by-step tutorial](https://hellmann-lab.github.io/CroCoNet/).
-
+3. Download the linked Zenodo repository to a subdirectory <tt>data</tt>
 
 ### 1. Neural differentiation dataset
 The main example data throughout the paper is a scRNA-seq dataset obtained during the early neural differentiation of human, gorilla and cynomolgus macaque induced pluripotent (iPS) cell lines. The relevant scripts to analyze this dataset are the following:
