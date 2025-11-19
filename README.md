@@ -6,7 +6,7 @@
 This repository contains the code to reproduce all analyses in the
 manuscript
 
-### **CroCoNet: a novel framework for cross-species network analysis reveals POU5F1 (OCT4) rewiring**
+#### [**CroCoNet: a novel framework for cross-species network analysis reveals POU5F1 (OCT4) rewiring**](https://www.biorxiv.org/content/10.1101/2025.11.18.689002v1)
 
 by Anita Térmeg, Johanna Geuder, Vladyslav Storozhuk, Zane Kliesmete,
 Fiona C. Edenhofer, Beate Vieth, Philipp Janssen, Ines Hellmann
