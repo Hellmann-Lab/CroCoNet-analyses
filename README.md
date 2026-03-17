@@ -4,10 +4,11 @@
 This repository contains the code to reproduce all analyses in the
 following manuscript:
 
-#### [**CroCoNet: a novel framework for cross-species network analysis reveals POU5F1 (OCT4) rewiring**](https://www.biorxiv.org/content/10.1101/2025.11.18.689002v1)
+#### [**CroCoNet: a framework for the quantitative comparison of gene regulatoy networks across species**](https://www.biorxiv.org/content/10.1101/2025.11.18.689002v1)
 
-by Anita Térmeg, Johanna Geuder, Vladyslav Storozhuk, Zane Kliesmete,
-Fiona C. Edenhofer, Beate Vieth, Philipp Janssen, Ines Hellmann
+by Anita Térmeg, Vladyslav Storozhuk, Zane Kliesmete, Fiona C.
+Edenhofer, Johanna Geuder, Tamina Dietl, Beate Vieth, Philipp Janssen,
+Boyan Bonev, Ines Hellmann
 
 # <img src="pipeline.png" align="center" width="1000" />
 
@@ -19,11 +20,10 @@ tutorial](https://hellmann-lab.github.io/CroCoNet/).
 The raw data necessary to reproduce these analyses can be found on
 ArrayExpress and GEO:
 
-| Accession                                                                                                                                                               | Dataset                  |
-|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|
-| [E-MTAB-15695](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15695)                                                                                      | scRNA-seq data           |
-| [E-MTAB-13373](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-13373) & [E-MTAB-15654](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15654) | ATAC-seq data            |
-| [GSE298717](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE298717) (currently private)                                                                           | single-cell CRISPRi data |
+| Accession | Dataset |
+|----|----|
+| [E-MTAB-15695](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15695) | scRNA-seq data |
+| [E-MTAB-13373](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-13373) & [E-MTAB-15654](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15654) | ATAC-seq data |
 
 Processed data files have been deposited to Zenodo:
 
@@ -46,7 +46,9 @@ cynomolgus macaque induced pluripotent (iPS) cell lines. The relevant
 scripts to analyze this dataset are the following:
 
 <details>
+
 <summary>
+
 <strong>Mapping & QC</strong>
 </summary>
 
@@ -78,8 +80,11 @@ scripts to analyze this dataset are the following:
   inference](1.neural_differentiation_dataset/1.1.mapping_and_QC/1.1.10.QC_and_filtering.R)
 
 </details>
+
 <details>
+
 <summary>
+
 <strong>Network inference</strong>
 </summary>
 
@@ -89,16 +94,27 @@ scripts to analyze this dataset are the following:
   environment](1.neural_differentiation_dataset/1.2.network_inference/1.2.2.create_GRNBoost2_env.sh)
 - [Infer networks per replicate using
   GRNBoost2](1.neural_differentiation_dataset/1.2.network_inference/1.2.3.run_GRNBoost2.sh)
-  - [Network inference worker
+  - [GRNBoost2 network inference worker
     script](1.neural_differentiation_dataset/1.2.network_inference/arboreto_with_multiprocessing.py)
+- [Prepare input for Spearman’s
+  correlation](1.neural_differentiation_dataset/1.2.network_inference/1.2.4.prepare_data_for_Spearman.R)
+- [Infer networks per replicate using Spearman’s
+  correlation](1.neural_differentiation_dataset/1.2.network_inference/1.2.5.run_correlatePairs.sh)
+  - [Spearman’s correlation network inference worker
+    script](1.neural_differentiation_dataset/1.2.network_inference/correlatePairs.R)
 
 </details>
+
 <p style="margin: 0.25em 0 0.2em 0.3em;">
+
 <em>Start here to skip computationally intensive steps and jump to core
 analysis</em>
 </p>
+
 <details>
+
 <summary>
+
 <strong>CroCoNet analysis</strong>
 </summary>
 
@@ -112,6 +128,8 @@ analysis</em>
   scores](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.4.CroCoNet_analysis_with_cor_adj.R)
 - [Compare results between the cor.kIM and cor.adj preservation
   scores](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.5.cor_kIM_VS_cor_adj.R)
+- [CroCoNet analysis based on Spearman
+  networks](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.6.CroCoNet_analysis_on_Spearman_networks.R)
 
 </details>
 
@@ -123,7 +141,9 @@ databases. These lines of analysis can be reproduced using the following
 scripts:
 
 <details>
+
 <summary>
+
 <strong>Regulator interactions and module overlaps</strong>
 </summary>
 
@@ -136,8 +156,11 @@ scripts:
   overlap](2.validations/2.1.regulator_interactions_and_module_overlaps/2.1.3.test_association.R)
 
 </details>
+
 <details>
+
 <summary>
+
 <strong>Pathway enrichment analysis</strong>
 </summary>
 
@@ -148,8 +171,11 @@ scripts:
   results](2.validations/2.2.pathway_enrichment/2.2.2.summarize_Reactome_results.R)
 
 </details>
+
 <details>
+
 <summary>
+
 <strong>Binding site enrichment and divergence</strong>
 </summary>
 
@@ -196,6 +222,7 @@ scripts:
   gene](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.20.summarize_motif_scores_per_gene.Rmd)
 
 <p style="margin: -1em 0 0em 2em;">
+
 <em>Start here to skip computationally intensive steps and jump to core
 analysis</em>
 </p>
@@ -206,8 +233,11 @@ analysis</em>
   species](2.validations/2.3.binding_site_enrichment_and_divergence/2.3.22.binding_site_divergence_across_species.R)
 
 </details>
+
 <details>
+
 <summary>
+
 <strong>Sequence divergence</strong>
 </summary>
 
@@ -224,8 +254,11 @@ analysis</em>
   divergence](2.validations/2.4.sequence_divergence/2.4.4.sequence_divergence_VS_network_divergence.R)
 
 </details>
+
 <details>
+
 <summary>
+
 <strong>Expression pattern divergence</strong>
 </summary>
 
@@ -238,37 +271,28 @@ analysis</em>
   divergence](2.validations/2.5.expression_pattern_divergence/2.5.2.expression_pattern_divergence_VS_network_divergence.R)
 
 </details>
+
 <details>
+
 <summary>
-<strong>Analysis of POU5F1 ChIP-seq data</strong>
+
+<strong>Enrichment of the regulator’s ChIP-seq peaks near module
+genes</strong>
 </summary>
 
-- [Download FASTQ files of the ChIP_seq
-  data](2.validations/2.6.POU5F1_ChIP_seq/2.6.1.download_FASTQ.sh)
-- [Create bowtie
-  indices](2.validations/2.6.POU5F1_ChIP_seq/2.6.2.create_bowtie_index.sh)
-- [Map ChIP-seq reads using
-  bowtie](2.validations/2.6.POU5F1_ChIP_seq/2.6.3.mapping.sh)
-- [Name-sort BAM
-  files](2.validations/2.6.POU5F1_ChIP_seq/2.6.4.name_sorting.sh)
-- [Call peaks using
-  Genrich](2.validations/2.6.POU5F1_ChIP_seq/2.6.5.peak_calling.sh)
-- [Calculate ChIP-seq
-  coverage](2.validations/2.6.POU5F1_ChIP_seq/2.6.6.get_coverage.sh)
-- [Check enrichment around transcriptional start
-  sites](2.validations/2.6.POU5F1_ChIP_seq/2.6.7.check_TSS_enrichment.R)
-
-<p style="margin: -1em 0 0em 2em;">
-<em>Start here to skip computationally intensive steps and jump to core
-analysis</em>
-</p>
-
-- [Calculate POU5F1 ChIP-seq enrichment near POU5F1 module
-  members](2.validations/2.6.8.calculate_enrichment_near_POU5F1_module_members.R)
+- [POU5F1 ChIP-seq
+  analysis](2.validations/2.6.ChIP_seq_enrichment/POU5F1_ChIP_seq.Rmd)
+- [NANOG ChIP-seq
+  analysis](2.validations/2.6.ChIP_seq_enrichment/NANOG_ChIP_seq.Rmd)
+- [PAX6 ChIP-seq
+  analysis](2.validations/2.6.ChIP_seq_enrichment/PAX6_ChIP_seq.Rmd)
 
 </details>
+
 <details>
+
 <summary>
+
 <strong>Enrichment of LTR7 elements near POU5F1 module members</strong>
 </summary>
 
@@ -279,8 +303,11 @@ analysis</em>
   members](2.validations/2.7.POU5F1_LTR7_enrichment/2.7.2.calculate_enrichment_near_POU5F1_module_members.R)
 
 </details>
+
 <details>
+
 <summary>
+
 <strong>Analysis of POU5F1 single-cell CRISPRi data</strong>
 </summary>
 
@@ -308,6 +335,7 @@ analysis</em>
   filtering](2.validations/2.8.POU5F1_CRISPRi/2.8.8.QC_and_filtering.R)
 
 <p style="margin: -1em 0 0em 2em;">
+
 <em>Start here to skip computationally intensive steps and jump to core
 analysis</em>
 </p>
@@ -329,7 +357,9 @@ gorilla, rhesus macaque and marmoset donors. The following scripts
 contain the code to run CroCoNet analysis on this dataset:
 
 <details>
+
 <summary>
+
 <strong>Data preparation</strong>
 </summary>
 
@@ -341,8 +371,11 @@ contain the code to run CroCoNet analysis on this dataset:
   analysis](3.brain_dataset/3.1.data_preparation/3.1.3.subsampling.R)
 
 </details>
+
 <details>
+
 <summary>
+
 <strong>Network inference</strong>
 </summary>
 
@@ -352,12 +385,17 @@ contain the code to run CroCoNet analysis on this dataset:
     script](3.brain_dataset/3.2.network_inference/correlatePairs.R)
 
 </details>
+
 <p style="margin: 0.25em 0 0.3em 0.3em;">
+
 <em>Start here to skip computationally intensive steps and jump to core
 analysis</em>
 </p>
+
 <details>
+
 <summary>
+
 <strong>CroCoNet analysis</strong>
 </summary>
 
@@ -376,7 +414,9 @@ This directory contains all scripts required to reproduce the figures
 and tables featuring in the manuscript.
 
 <details>
+
 <summary>
+
 <strong>Main figures</strong>
 </summary>
 
@@ -386,8 +426,11 @@ and tables featuring in the manuscript.
 - [Helper functions](4.paper_figures_and_tables/helper_functions.R)
 
 </details>
+
 <details>
+
 <summary>
+
 <strong>Supplementary figures</strong>
 </summary>
 
@@ -403,11 +446,18 @@ and tables featuring in the manuscript.
 - [Supplementary Figure
   S10](4.paper_figures_and_tables/suppl.figureS10.R)
 - [Supplementary Figure
-  S10](4.paper_figures_and_tables/suppl.figureS10.R)
+  S11](4.paper_figures_and_tables/suppl.figureS11.R)
+- [Supplementary Figure
+  S12-S13](4.paper_figures_and_tables/suppl.figureS12_13.R)
+- [Supplementary Figure
+  S14](4.paper_figures_and_tables/suppl.figureS14.R)
 
 </details>
+
 <details>
+
 <summary>
+
 <strong>Supplementary tables</strong>
 </summary>
 
