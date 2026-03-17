@@ -225,8 +225,10 @@ scripts:
     </ul>
   </li>
   <li><a href="2.validations/2.8.POU5F1_CRISPRi/2.8.8.QC_and_filtering.R">QC & filtering</a></li>
-&#10;  <p style="margin: -1em 0 0em 2em;"><em>Start here to skip computationally intensive steps and jump to core analysis</em></p>
-&#10;  <li><a href="2.validations/2.8.POU5F1_CRISPRi/2.8.9.stemness_scores_and_knockdown_efficiencies.R">Stemness scores & knockdown efficiencies</a></li>
+</ul>
+&#10;<p style="margin: -1em 0 0em 2em;"><em>Start here to skip computationally intensive steps and jump to core analysis</em></p>
+&#10;<ul>
+  <li><a href="2.validations/2.8.POU5F1_CRISPRi/2.8.9.stemness_scores_and_knockdown_efficiencies.R">Stemness scores & knockdown efficiencies</a></li>
   <li><a href="2.validations/2.8.POU5F1_CRISPRi/2.8.10.DE_analysis.R">DE analysis</a></li>
   <li><a href="2.validations/2.8.POU5F1_CRISPRi/helper_functions.R">Helper functions</a></li>
 </ul>
