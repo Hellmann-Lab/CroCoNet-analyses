@@ -9,10 +9,12 @@ library(igraph)
 library(cowplot)
 
 
+source(here("scripts/4.paper_figures_and_tables/helper_functions.R"))
+
 ## Module overlap network plots (initial & random) -----------------------------------
 
 # load module overlap fractions and hub protein-protein interactions
-module_overlaps_random <- readRDS("data/validations/regulator_interactions_and_module_overlaps/module_overlaps_random.rds")
+module_overlaps_random <- readRDS(here("data/validations/regulator_interactions_and_module_overlaps/module_overlaps_random.rds"))
 
 # subset the top 100 edges (= module pairs with the largest overlaps)
 module_overlaps_random_filt <- module_overlaps_random %>%
@@ -21,7 +23,7 @@ module_overlaps_random_filt <- module_overlaps_random %>%
   dplyr::filter(rnk_overlap_frac > nrow(.) - 100)
 
 # load module overlap fractions and hub protein-protein interactions
-module_overlaps_initial <- readRDS("data/validations/regulator_interactions_and_module_overlaps/module_overlaps_initial.rds")
+module_overlaps_initial <- readRDS(here("data/validations/regulator_interactions_and_module_overlaps/module_overlaps_initial.rds"))
 
 # subset the top 100 edges (= module pairs with the largest overlaps)
 module_overlaps_initial_filt <- module_overlaps_initial %>%
@@ -56,6 +58,8 @@ p1 <- ggraph(layout_random) +
         panel.background = element_rect(fill = "white", color = "transparent"),
         plot.background = element_rect(fill = "white", color = "transparent"),
         legend.key.height = unit(0.4, "cm"),
+        legend.title = element_text(size = 13),
+        legend.text = element_text(size = 11),
         plot.title = element_text(size = 15, margin = margin(0,0,0,40), face = "bold")) +
   ggtitle("random modules") +
   scale_x_continuous(expand = c(0.07, 0))
@@ -82,6 +86,8 @@ p2 <- ggraph(layout_initial) +
         panel.background = element_rect(fill = "white", color = "transparent"),
         plot.background = element_rect(fill = "white", color = "transparent"),
         legend.key.height = unit(0.4, "cm"),
+        legend.title = element_text(size = 13),
+        legend.text = element_text(size = 11),
         plot.title = element_text(size = 15, margin = margin(0,0,0,40), face = "bold")) +
   ggtitle("initial modules") +
   scale_x_continuous(expand = c(0.07, 0))
@@ -124,12 +130,31 @@ p3 <- module_overlaps %>%
   facet_wrap(~module_type) +
   theme(strip.background = element_blank(),
         strip.text.x = element_blank(),
-        axis.title.y = element_text(margin = margin(0, 10, 0, 0))) +
+        axis.title.y = element_text(margin = margin(0, -22, 0, 0))) +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
 p3
 
 
 ## Binding site enrichment (gorilla and cynomolgus) -----------------------------------
+
+# load summarized scores per module
+motif_scores_per_module <- readRDS(here("data/validations/binding_site_enrichment_and_divergence/motif_scores_per_module.rds"))
+
+# do paired two-sided Wilcoxon-tests
+motif_scores_per_module %>% 
+  pivot_wider(names_from = "module_type", values_from = median_sum_score) %>% 
+  group_by(species) %>% 
+  reframe(bind_rows(initial_pruned = broom::tidy(wilcox.test(initial, pruned, paired = TRUE))[1:2],
+                    initial_random = broom::tidy(wilcox.test(initial, random, paired = TRUE))[1:2],
+                    pruned_random = broom::tidy(wilcox.test(pruned, random, paired = TRUE))[1:2],
+                    pruned_random_initial_random = broom::tidy(wilcox.test(pruned-random, initial - random, paired = TRUE))[1:2],
+                    .id = "comparison")) %>% 
+  dplyr::mutate(significance_level = case_when(p.value < 0.0001 ~ "****",
+                                               p.value < 0.001 ~ "***",
+                                               p.value < 0.01 ~ "**",
+                                               p.value < 0.05 ~ "*",
+                                               TRUE ~ "n.s."))
+
 
 # load motif scores summarized per module, difference between initial & random and pruned & random
 motif_scores_initial_pruned_vs_random <- readRDS("data/validations/binding_site_enrichment_and_divergence/motif_scores_initial_pruned_vs_random.rds")
@@ -149,7 +174,7 @@ p4 <- motif_scores_initial_pruned_vs_random %>%
   facet_wrap(~species) +
   scale_fill_manual(values = c("#08635C", "#E6FFF6"), guide = "none") +
   theme(axis.title.y = element_blank(),
-        axis.text.y = element_text(size = 14, color = "black"),
+        axis.text.y = element_text(size = 13.5, color = "black"),
         strip.background = element_blank(),
         strip.text.x = element_blank()) +
   xlab("Δ median motif score") +
@@ -163,14 +188,71 @@ p4 <- motif_scores_initial_pruned_vs_random %>%
 p4
 
 
+## Module improvements --------------------------------------------------
+
+gene_ratios <- readRDS(here("data/validations/pathway_enrichment/gene_ratios.rds"))
+
+gene_ratios_wide <- gene_ratios %>% 
+  pivot_wider(names_from = "module_type", values_from = "gene_ratio")
+
+motif_scores_per_module <- readRDS(here("data/validations/binding_site_enrichment_and_divergence/motif_scores_per_module.rds")) %>% 
+  dplyr::filter(species == "human") %>% 
+  dplyr::select(-species)
+
+motif_scores_wide <- motif_scores_per_module %>% 
+  pivot_wider(names_from = "module_type", values_from = "median_sum_score")
+
+to_plot <- bind_rows(gene_ratios_wide %>% 
+                       dplyr::select(regulator, pruned, other = initial) %>% 
+                       dplyr::mutate(test = "pathway\nenrichment", .before = 1,
+                                     comparison = "pruned VS initial"),
+                     gene_ratios_wide %>% 
+                       dplyr::select(regulator, pruned, other = random) %>% 
+                       dplyr::mutate(test = "pathway\nenrichment", .before = 1,
+                                     comparison = "pruned VS random"), 
+                     motif_scores_wide %>% 
+                       dplyr::select(regulator, pruned, other = initial) %>% 
+                       dplyr::mutate(test = "motif\nenrichment", .before = 1,
+                                     comparison = "pruned VS initial"),
+                     motif_scores_wide %>% 
+                       dplyr::select(regulator, pruned, other = random) %>% 
+                       dplyr::mutate(test = "motif\nenrichment", .before = 1,
+                                     comparison = "pruned VS random")) %>% 
+  dplyr::mutate(category = case_when(pruned == 0 & other == 0 ~ "no enrichment",
+                                     pruned > other ~ "better",
+                                     pruned == other ~ "same",
+                                     T ~ "worse"),
+                category = factor(category, rev(c("better", "same", "worse", "no enrichment"))),
+                test = factor(test, c("pathway\nenrichment", "motif\nenrichment")))
+
+p5 <- to_plot %>% 
+  ggplot(aes(x = comparison, fill = category)) +
+  geom_bar() +
+  theme_bw(base_size = 14) +
+  facet_wrap(~test, ncol = 4) +
+  scale_fill_manual(values = c(better = "orange", same = "tomato3", worse = "turquoise4", "no enrichment" = "grey70"), name = "pruned module\ncompared to\ninitial/random") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(size = 13, color = "black", angle = 45, hjust = 1, vjust = 1),
+        legend.title = element_text(size = 13),
+        legend.text = element_text(size = 11)) +
+  guides(fill = guide_legend(reverse = TRUE))
+p5
+# ggsave("figures/module_improvements_small.png", width = 6, height = 5)
+
+
 ## Combine --------------------------------------------------------------
 
 upper_level <- p2 + p1 + plot_layout(guides = "collect")
-upper_level
 
-lower_level <- p3 + p4 + plot_layout(widths = c(1.2, 1))
-lower_level
+lower_level <- wrap_plots(p3, free(p5),p4,
+                          design = "
+                            d#e
+                          ##e
+                          f#e
+                          f##",
+                          widths = c(1.05, 0.05, 1),
+                          heights = c(1, 0.3, 0.70, 0.01))
 
-plot_grid(upper_level, NULL,  lower_level, ncol = 1, rel_heights = c(1.3, 0.1, 1)) &
+p <- plot_grid(upper_level, NULL, lower_level, ncol = 1, rel_heights = c(1.3, 0.1, 1.85)) &
   theme(plot.background = element_rect(fill = "white", color = "transparent"))
-ggplot2::ggsave(here("data/paper_figures_and_tables/suppl.figureS3.png"), width = 12.8, height = 8.2)
+ggplot2::ggsave(here("data/paper_figures_and_tables/suppl.figureS3.png"), p, width = 12.8, height = 10.7)

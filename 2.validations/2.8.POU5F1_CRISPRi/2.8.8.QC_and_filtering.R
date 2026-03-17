@@ -426,7 +426,7 @@ p1 / p2 + theme(strip.background = element_blank(),
 ggsave(here(wd, "figures/gRNA_detection.png"), width = 10, height = 5.5)
 
 
-## Cell filter #3: cells with POU5F1 or control gRNAs --------------------------------------
+## Cell filter #3: cells with a single dominant gRNA --------------------------------------
 
 # filter based on gRNAs
 

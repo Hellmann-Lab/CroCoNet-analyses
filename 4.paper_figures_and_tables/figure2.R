@@ -39,7 +39,7 @@ ggsave(here(fig_dir, "figure2_POU5F1_pruning.pdf"), height = 9.8, width = 5.4)
 
 # cell type colors
 ct_names <- c("Pluripotent_Cells", "Early_Ectoderm",  "Neurons")
-ct_colors <- setNames(c("#86C1E6", "#F4AB62", "#CA6102"),
+ct_colors <- setNames(c("#86C1E6", "#F4AB62", "#914601"),
                       ct_names)
 
 # SCE object woth batch-corrected counts
@@ -221,7 +221,7 @@ pathway_enr <- gene_ratios_initial_pruned_vs_random %>%
   theme(axis.title.y = element_blank(),
         axis.text.y = element_text(size = 15, color = "black")) +
   xlab("Δ gene ratio in\nenriched pathways") +
-  stat_compare_means(method = "wilcox.test", comparisons = list(c("pruned VS\nrandom", "initial VS\nrandom")), label = "p.signif", vjust = 0.4, tip.length = 0.015, label.x = max_ratio_diff*1.1, symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, Inf), symbols = c("***", "**", "*", "ns"))) +
+  stat_compare_means(method = "wilcox.test", paired = TRUE, comparisons = list(c("pruned VS\nrandom", "initial VS\nrandom")), label = "p.signif", vjust = 0.4, tip.length = 0.015, label.x = max_ratio_diff*1.1, symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, Inf), symbols = c("***", "**", "*", "ns"))) +
   geom_text(data = . %>% group_by(comparison) %>% dplyr::summarise(label = ifelse(unique(comparison) == "initial VS\nrandom", "*", "***"), x = max_ratio_diff*1.07), aes(x = x, label = label), angle = 90) +
   scale_x_continuous(expand = expansion(mult = c(0.05, 0.08)))
 pathway_enr
@@ -265,10 +265,9 @@ motif_enr <- motif_scores_initial_pruned_vs_random %>%
   theme_bw(base_size = 15) +
   scale_fill_manual(values = c("#08635C", "#E6FFF6"), guide = "none") +
   theme(axis.title.y = element_blank(),
-  axis.text.y = element_blank(),
-  axis.ticks.y = element_blank()) +
+        axis.text.y = element_text(size = 15, color = "black")) +
   xlab("Δ median score of\nregulator-associated motifs") +
-  stat_compare_means(method = "wilcox.test", comparisons = list(c("pruned VS\nrandom", "initial VS\nrandom")), label = "p.signif", vjust = 0.4, tip.length = 0.015, label.x = max_score_diff*1.1, symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, Inf), symbols = c("***", "**", "*", "ns"))) +
+  stat_compare_means(method = "wilcox.test", paired = TRUE, comparisons = list(c("pruned VS\nrandom", "initial VS\nrandom")), label = "p.signif", vjust = 0.4, tip.length = 0.015, label.x = max_score_diff*1.1, symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, Inf), symbols = c("***", "**", "*", "ns"))) +
   geom_text(data = . %>% group_by(comparison) %>% dplyr::summarise(label = ifelse(unique(comparison) == "initial VS\nrandom", "", "***"), x = max_score_diff*1.07), aes(x = x, label = label), angle = 90) +
   scale_x_continuous(expand = expansion(mult = c(0.05, 0.08)))
 motif_enr
@@ -277,10 +276,10 @@ motif_enr
 ## POU5F1 ChIP-seq ------------------------------------------------------
 
 # load ChIP-seq overlaps per gene
-overlaps <- readRDS(here("data/validations/POU5F1_ChIP_seq/ChIP_ATAC_overlaps.rds"))
+POU5F1_overlaps <- readRDS(here("data/validations/ChIP_seq/POU5F1_ChIP_module_overlaps_hPSCs.rds"))
 
 # plot the fraction of genes that have associated POU5F1 ChIP-seq peaks(s) in the POU5F1 module VS among all other genes
-chip_seq <- overlaps %>%
+POU5F1_chip_seq <- POU5F1_overlaps %>%
   group_by(in_module) %>%
   dplyr::mutate(frac = n / sum(n)) %>%
   dplyr::filter(overlap_chipseq == "yes") %>%
@@ -292,27 +291,79 @@ chip_seq <- overlaps %>%
   theme(axis.title.y = element_blank(),
   axis.text.y = element_text(size = 15, color = "black")) +
   scale_fill_manual(values = c("grey60", "#08635C"), guide = "none") +
-  geom_signif(comparisons = list(c("POU5F1\nmodule", "other")), annotations = c("***"), vjust = 0.4, size = 0.3) +
+  geom_signif(comparisons = list(c("POU5F1\nmodule", "other")), annotations = get_signif(POU5F1_overlaps), vjust = 0.4, size = 0.3) +
   scale_x_continuous(expand = expansion(mult = c(0.05, 0.08)))
-chip_seq
+POU5F1_chip_seq
+
+
+## NANOG ChIP-seq ------------------------------------------------------
+
+# load ChIP-seq overlaps per gene
+NANOG_overlaps <- readRDS(here("data/validations/ChIP_seq/NANOG_ChIP_module_overlaps_hPSCs.rds"))
+
+# plot the fraction of genes that have associated NANOG ChIP-seq peaks(s) in the NANOG module VS among all other genes
+NANOG_chip_seq <- NANOG_overlaps %>%
+  group_by(in_module) %>%
+  dplyr::mutate(frac = n / sum(n)) %>%
+  dplyr::filter(overlap_chipseq == "yes") %>%
+  dplyr::mutate(in_module = factor(ifelse(in_module == "yes", "NANOG\nmodule", "other"), c("other", "NANOG\nmodule"))) %>%
+  ggplot(aes(y = in_module, x = frac, fill = in_module)) +
+  geom_bar(stat = "identity", position = "stack", width = 0.8, linewidth = 0.1, color = "grey20") +
+  theme_bw(base_size = 15) +
+  xlab("fraction of genes with associated\nNANOG ChIP-seq peak(s)") +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 15, color = "black")) +
+  scale_fill_manual(values = c("grey60", "#08635C"), guide = "none") +
+  geom_signif(comparisons = list(c("NANOG\nmodule", "other")), annotations = get_signif(NANOG_overlaps), vjust = 0.4, size = 0.3) +
+  scale_x_continuous(expand = expansion(mult = c(0.05, 0.08)))
+NANOG_chip_seq
+
+
+## PAX6 ChIP-seq ------------------------------------------------------
+
+# load ChIP-seq overlaps per gene
+PAX6_overlaps <- readRDS(here("data/validations/ChIP_seq/PAX6_ChIP_module_overlaps_hNPCs.rds"))
+
+# plot the fraction of genes that have associated PAX6 ChIP-seq peaks(s) in the PAX6 module VS among all other genes
+PAX6_chip_seq <- PAX6_overlaps %>%
+  group_by(in_module) %>%
+  dplyr::mutate(frac = n / sum(n)) %>%
+  dplyr::filter(overlap_chipseq == "yes") %>%
+  dplyr::mutate(in_module = factor(ifelse(in_module == "yes", "PAX6\nmodule", "other"), c("other", "PAX6\nmodule"))) %>%
+  ggplot(aes(y = in_module, x = frac, fill = in_module)) +
+  geom_bar(stat = "identity", position = "stack", width = 0.8, linewidth = 0.1, color = "grey20") +
+  theme_bw(base_size = 15) +
+  xlab("fraction of genes with associated\nPAX6 ChIP-seq peak(s)") +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 15, color = "black")) +
+  scale_fill_manual(values = c("grey60", "#08635C"), guide = "none") +
+  geom_signif(comparisons = list(c("PAX6\nmodule", "other")), annotations = get_signif(PAX6_overlaps), vjust = 0.4, size = 0.3) +
+  scale_x_continuous(expand = expansion(mult = c(0.05, 0.08)))
+PAX6_chip_seq
+
+# (NANOG_chip_seq + ggtitle("NANOG ChIP-seq enrichment")) | (PAX6_chip_seq + ggtitle("PAX6 ChIP-seq enrichment"))
+# ggsave("figures/ChIP_seq.png", width = 10, height = 3.3)
 
 
 ## Combining patchwork --------------------------------------------------
 
-p1 <- wrap_plots(traj_plot_ct + theme(legend.position = "none"), get_legend(traj_plot_ct),
-                  size, weight_comp, kIM_comp,
-                  design = "ab##
-                  cdde",
-                  widths = c(1.08, 0.01, 0.99, 1),
-                  heights = c(1.01, 1))
+wrap_plots(traj_plot_ct + theme(legend.position = "none"), get_legend(traj_plot_ct),
+             size, weight_comp, kIM_comp,
+             design = "ab##
+              cdde",
+             widths = c(1.08, 0.01, 0.99, 1),
+             heights = c(1.01, 1))
+ggsave(here(fig_dir, "figure2_pruning_stats.pdf"), width = 9.5, height = 5.25)
+ggsave(here(fig_dir, "figure2_pruning_stats.png"), width = 9.5, height = 5.25)
 
-p2 <- wrap_plots(pathway_enr, motif_enr, plot_spacer(), chip_seq, design = "abbc
-dd##",
-                 widths = c(1.05, 0.5, 0.5, 1.3))
 
-plot_grid(p1, p2, ncol = 1, rel_heights = c(2, 2))
-ggsave(here(fig_dir, "figure2_pruning_stats_and_validations.pdf"), width = 9.5, height = 10.5)
-ggsave(here(fig_dir, "figure2_pruning_stats_and_validations.png"), width = 9.5, height = 10.5)
+
+wrap_plots(pathway_enr, POU5F1_chip_seq, NANOG_chip_seq, PAX6_chip_seq, ncol = 4, widths = c(1.42, 1, 1, 1)) & theme(plot.margin = margin(5.5, 11, 5.5, 5.5))
+ggsave(here(fig_dir, "figure2_validations1.png"), width = 17.5, height = 2.78)
+
+wrap_plots(motif_enr, POU5F1_chip_seq, NANOG_chip_seq, PAX6_chip_seq, ncol = 4, widths = c(1.42, 1, 1, 1)) & theme(plot.margin = margin(5.5, 11, 5.5, 5.5))
+ggsave(here(fig_dir, "figure2_validations2.png"), width = 17.5, height = 2.78)
+
 
 
 ## Network plot ---------------------------------------------------------
@@ -330,16 +381,16 @@ mod_overlaps_filt <- mod_overlaps %>%
 mod_overlaps_graph <- graph_from_data_frame(mod_overlaps_filt)
 
 # set seed for reproducibility
-set.seed(1)
+set.seed(11)
 
 # create layout
 layout <- create_layout(mod_overlaps_graph, layout = "dh")
 
-# mirror horizontally
-layout$x <- -layout$x
+# # mirror horizontally
+# layout$x <- -layout$x
 
 # rotate slightly
-theta <- 14 * pi / 180
+theta <- 55 * pi / 180
 x_rot <- layout$x * cos(theta) - layout$y * sin(theta)
 y_rot <- layout$x * sin(theta) + layout$y * cos(theta)
 layout$x <- x_rot
@@ -348,7 +399,7 @@ layout$y <- y_rot
 # graph plot
 ggraph(layout) +
   geom_edge_link(aes(edge_width = overlap_frac, color = interaction)) +
-  scale_edge_width(range = c(0.1, 1), name = "overlap fraction of\nmodule member genes") +
+  scale_edge_width(range = c(0.1, 1), name = "overlap fraction\nof module member\ngenes") +
   geom_node_point(size = 8, shape = 21, fill = "transparent", color = "transparent") +
   geom_node_label(aes(label = name), size = 3.5, label.padding = unit(0.12, "lines"), label.size = 0, fill = "grey60", color = "white", fontface = "bold") +
   scale_edge_color_manual(values = c("grey60", "coral1"), limits = c(F, T), name = "protein-protein\ninteraction") +
@@ -357,7 +408,7 @@ ggraph(layout) +
         panel.background = element_rect(fill = "white", color = "transparent"),
         plot.background = element_rect(fill = "white", color = "transparent"),
         legend.key.height = unit(0.4, "cm"))
-ggsave(here(fig_dir, "figure2_module_overlaps.pdf"), width = 10, height = 7)
+ggsave(here(fig_dir, "figure2_module_overlaps.pdf"), width = 11.5, height = 5.5)
 
 
 ## Eigengene heatmap ----------------------------------------------------
@@ -391,7 +442,7 @@ eigengenes <- readRDS(here(wd, "eigengenes.rds"))
 
 # cell type colors
 ct_names <- c("Pluripotent_Cells", "Early_Ectoderm",  "Neurons")
-ct_colors <- setNames(c("#86C1E6", "#F4AB62", "#CA6102"),
+ct_colors <- setNames(c("#86C1E6", "#F4AB62", "#914601"),
                       ct_names)
 
 # subset eigengenes
@@ -419,7 +470,8 @@ cell_order <- eigengenes_examples %>%
   dplyr::mutate(cell = 1:length(cell)) %>%
   ungroup()
 ct_rug <- ggplot(cell_order, aes(x = cell), y = 1) +
-  geom_segment(aes(x = cell, xend = cell, y = 0, yend = 1, color = cell_type), linewidth = 0.5) +
+  geom_segment(data = . %>%  dplyr::filter(cell_type != "Neurons"), aes(x = cell, xend = cell, y = 0, yend = 1, color = cell_type), linewidth = 0.5) +
+  geom_segment(data = . %>%  dplyr::filter(cell_type == "Neurons"), aes(x = cell, xend = cell, y = 0, yend = 1, color = cell_type), linewidth = 0.02) +
   theme_bw(base_size = 14) +
   scale_color_manual(values = ct_colors, labels = c("pluripotent\ncells", "early\nectoderm", "neurons"), name = "cell type", guide = guide_legend(override.aes = list(linewidth = 7.5))) +
   theme(axis.title = element_blank(),

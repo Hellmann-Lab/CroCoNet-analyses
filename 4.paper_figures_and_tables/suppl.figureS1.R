@@ -157,7 +157,7 @@ p5 <- random_vs_actual_pres %>%
         axis.text.x = element_text(color = "black", size = 14, face = "italic"),
         axis.title.y = element_text(margin = margin(l = 35))) +
   ylab(expression(Delta * ~preservation~score[~actual - random])) +
-  geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
+  geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), test.args = list(paired = TRUE), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
 p5
 
@@ -192,7 +192,7 @@ p6 <- pres_stats_to_plot %>%
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(color = "black", size = 14, face = "italic")) +
   ylab(expression(-italic(r)[preservation~score * ", " * phylogenetic~distance])) +
-  geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
+  geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), test.args = list(paired = TRUE), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
 p6
 
@@ -219,7 +219,7 @@ p7 <- bind_rows(cor_adj = tree_stats,
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(color = "black", size = 14, face = "italic")) +
   ylab(expression(frac("total tree length", "within-species diversity"))) +
-  geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
+  geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), test.args = list(paired = TRUE), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
 p7
 
@@ -307,24 +307,24 @@ p10  <- plotConservedDivergedModules(module_conservation_overall, label_size = 3
         legend.direction = "horizontal") +
   # make sure that the labels are distributed neatly by adding positions manually
   ggrepel::geom_label_repel(data = module_conservation_overall %>%
-                                                      dplyr::filter(.data[["conservation"]] == "conserved") %>%
+                                                      dplyr::filter(.data[["category"]] == "conserved") %>%
                                                       dplyr::slice_min(order_by = .data[["residual"]], n = 5),
-                            ggplot2::aes(label = .data[["regulator"]], color = .data[["conservation"]]),
+                            ggplot2::aes(label = .data[["regulator"]], color = .data[["category"]]),
                             fill = "white", size = 3.5, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, force = 2, max.overlaps = 20, show.legend = FALSE) +
   ggrepel::geom_label_repel(data = module_conservation_overall %>% dplyr::filter(regulator == "ZNF793"),
-                                                    ggplot2::aes(label = .data[["regulator"]], color = .data[["conservation"]]),
+                                                    ggplot2::aes(label = .data[["regulator"]], color = .data[["category"]]),
                             fill = "white", size = 3.5, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, force = 2, max.overlaps = 20, show.legend = FALSE, xlim = c(NA, 0.4), ylim = c(0.8, 0.864)) +
   ggrepel::geom_label_repel(data = module_conservation_overall %>% dplyr::filter(regulator %in% c("PATZ1")),
-                            ggplot2::aes(label = .data[["regulator"]], color = .data[["conservation"]]),
+                            ggplot2::aes(label = .data[["regulator"]], color = .data[["category"]]),
                             fill = "white", size = 3.5, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, force = 2, max.overlaps = 20, show.legend = FALSE) +
   ggrepel::geom_label_repel(data = module_conservation_overall %>% dplyr::filter(regulator == "RCOR1"),
-                            ggplot2::aes(label = .data[["regulator"]], color = .data[["conservation"]]),
+                            ggplot2::aes(label = .data[["regulator"]], color = .data[["category"]]),
                             fill = "white", size = 3.5, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, force = 2, max.overlaps = 20, show.legend = FALSE, xlim = c(NA, 0.4), ylim = c(0.864, 0.9)) +
   ggrepel::geom_label_repel(data = module_conservation_overall %>% dplyr::filter(regulator == "POU3F1"),
-                            ggplot2::aes(label = .data[["regulator"]], color = .data[["conservation"]]),
+                            ggplot2::aes(label = .data[["regulator"]], color = .data[["category"]]),
                             fill = "white", size = 3.5, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, force = 2, max.overlaps = 20, show.legend = FALSE, ylim = c(0.9, NA))+
   ggrepel::geom_label_repel(data = module_conservation_overall %>% dplyr::filter(regulator == "YBX3"),
-                            ggplot2::aes(label = .data[["regulator"]], color = .data[["conservation"]]),
+                            ggplot2::aes(label = .data[["regulator"]], color = .data[["category"]]),
                             fill = "white", size = 3.5, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, force = 2, max.overlaps = 20, show.legend = FALSE, ylim = c(NA, 0.8))
 p10
 
@@ -372,7 +372,7 @@ trees <- readRDS(here(wd, "trees.rds"))
 
 # get the 5 most conserved and 5 most diverged modules                
 top5_cons_div_modules <- module_conservation_overall %>%
-  dplyr::filter(conservation %in% c("conserved", "diverged")) %>%
+  dplyr::filter(category %in% c("conserved", "diverged")) %>%
   dplyr::arrange(residual) %>%
   dplyr::slice(1:5, (dplyr::n()-4):dplyr::n()) %>%
   pull(regulator) %>% 

@@ -27,20 +27,20 @@ phylo_dist <- ape::cophenetic.phylo(tree) %>%
 aa_cons_per_spec_pair <- readRDS(here(wd, "aa_conservation_regulators.rds")) %>%
   dplyr::select(regulator = gene_name, aa_cons.gg6, aa_cons.mf6) %>% 
   inner_join(module_conservation_overall) %>% 
-  dplyr::filter(conservation != "not_significant") %>% 
+  dplyr::filter(category != "within_expectation") %>% 
   pivot_longer(cols = c("aa_cons.gg6", "aa_cons.mf6"), names_to = "species_pair", values_to = "aa_cons") %>% 
   dplyr::mutate(species_pair = ifelse(species_pair == "aa_cons.gg6", "human VS gorilla", "human VS cynomolgus")) %>% 
   inner_join(phylo_dist) %>% 
   dplyr::mutate(species_pair = factor(species_pair, c("human VS gorilla", "human VS cynomolgus")))
 
 # test whether regulators with conserved network modules tend to have higher protein sequence conservation than regulators with diverged network modules
-fit <- lm(aa_cons ~ conservation + distance, 
+fit <- lm(aa_cons ~ category + distance, 
           data = aa_cons_per_spec_pair)
 summary(fit)
 
 # plot protein sequence divergence for regulators with conserved and diverged network modules
 aa_cons_per_spec_pair %>% 
-  ggplot(aes(x = conservation, y = 1- aa_cons)) +
+  ggplot(aes(x = category, y = 1- aa_cons)) +
   geom_beeswarm(aes(color = species_pair), dodge.width = 0.2, size = 1, cex = 2) +
   scale_color_manual(values = c("human VS gorilla" = "cyan3", "human VS cynomolgus" = "royalblue2"), labels = c("human VS\ngorilla", "human VS\ncynomolgus"), name = "species pair") +
   theme_bw(base_size = 14) +
@@ -56,11 +56,11 @@ ggsave(here(fig_dir, "sequence_divergence_VS_network_divergence.png"), width = 7
 # phastCons
 phastCons <- readRDS(here(wd, "phastCons_regulators.rds")) %>%
   inner_join(module_conservation_overall, by = c("gene_name" = "regulator")) %>% 
-  dplyr::filter(conservation != "not_significant")
+  dplyr::filter(category != "within_expectation")
 
 # plot 1 - phastCons for regulators with conserved and diverged network modules
 phastCons %>% 
-  ggplot(aes(x = conservation, y = 1 - mean_phastCons)) +
+  ggplot(aes(x = category, y = 1 - mean_phastCons)) +
   geom_beeswarm(dodge.width = 0.2, size = 1, cex = 2) +
   theme_bw(base_size = 14) +
   theme(axis.title.x = element_blank(),

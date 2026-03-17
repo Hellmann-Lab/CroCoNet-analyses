@@ -60,7 +60,7 @@ module_conservation_overall <- readRDS(here("data/neural_differentiation_dataset
 # add info about module conservation
 binding_site_vs_network_divergence <- binding_site_divergence_per_module %>% 
   inner_join(module_conservation_overall) %>% 
-  dplyr::filter(conservation != "not_significant") %>% 
+  dplyr::filter(category != "within_expectation") %>% 
   # get rid of redundancy
   dplyr::mutate(species_pair = paste0(species1, " VS ", species2)) %>% 
   dplyr::filter(species_pair != "gorilla VS cynomolgus") %>% 
@@ -70,7 +70,7 @@ binding_site_vs_network_divergence <- binding_site_divergence_per_module %>%
 saveRDS(binding_site_vs_network_divergence, here(wd, "binding_site_vs_network_divergence.rds"))
 
 # test whether regulators with diverged modules show higher binding site divergence than regulators with conserved modules (while accounting for the phylogeny)
-fit <- lm(median_delta_score ~ conservation + distance, 
+fit <- lm(median_delta_score ~ category + distance, 
           data = binding_site_vs_network_divergence)
 summary(fit) # not signif
 par(mfrow = c(2, 2))
@@ -78,7 +78,7 @@ plot(fit)
 
 # plot
 binding_site_vs_network_divergence %>% 
-  ggplot(aes(x = conservation, y = median_delta_score)) +
+  ggplot(aes(x = category, y = median_delta_score)) +
   geom_beeswarm(aes(color = species_pair), dodge.width = 0.2, size = 1.4, cex = 2) +
   theme_bw(base_size = 14) +
   scale_color_manual(values = c("human VS gorilla" = "cyan3", "human VS cynomolgus" = "royalblue2"), labels =c("human VS\ngorilla", "human VS\ncynomolgus"),  name = "species pair") +
@@ -88,14 +88,13 @@ binding_site_vs_network_divergence %>%
         legend.key.spacing.y = unit(0.4, "cm"),
         legend.margin = margin(0, 10, 0, 0)) +
   ylab("binding site divergence") +
-  scale_x_discrete(labels = c("top 5 conserved\nmodules", "top 5 diverged\nmodules")) +
-  stat_summary(fun="mean", geom="crossbar", linewidth = 0.2, width = 0.25) +
-  geom_signif(comparisons = list(c("conserved", "diverged")), annotations = c("n.s."), vjust = 0.1, size = 0.3) 
+  stat_summary(fun="mean", geom="crossbar", linewidth = 0.2, width = 0.25)
+  # geom_signif(comparisons = list(c("conserved", "diverged")), annotations = c("n.s."), vjust = 0.1, size = 0.3) 
 ggsave(here(wd, "figures/binding_site_vs_network_divergence.png"), width = 6, height = 4)
 
 # keep only the 5 most conserved and 5 most diverged modules
 top5_cons_div_modules <- module_conservation_overall %>%
-  dplyr::filter(conservation %in% c("conserved", "diverged")) %>%
+  dplyr::filter(category %in% c("conserved", "diverged")) %>%
   dplyr::arrange(residual) %>%
   dplyr::slice(1:5, (dplyr::n()-4):dplyr::n())
 binding_site_vs_network_divergence_top5 <- binding_site_vs_network_divergence %>% 
@@ -103,7 +102,7 @@ binding_site_vs_network_divergence_top5 <- binding_site_vs_network_divergence %>
 saveRDS(binding_site_vs_network_divergence_top5, here(wd, "binding_site_vs_network_divergence_top5.rds"))
 
 # test whether regulators with the top5 diverged modules show higher binding site divergence than regulators with the top5 conserved modules (while accounting for the phylogeny)
-fit <- lm(median_delta_score ~ conservation + distance, 
+fit <- lm(median_delta_score ~ category + distance, 
           data = binding_site_vs_network_divergence_top5)
 summary(fit) # signif
 par(mfrow = c(2, 2))
@@ -111,7 +110,7 @@ plot(fit)
 
 # plot
 binding_site_vs_network_divergence_top5 %>% 
-  ggplot(aes(x = conservation, y = median_delta_score)) +
+  ggplot(aes(x = category, y = median_delta_score)) +
   geom_beeswarm(aes(color = species_pair), dodge.width = 0.2, size = 1.4, cex = 2) +
   theme_bw(base_size = 14) +
   scale_color_manual(values = c("human VS gorilla" = "cyan3", "human VS cynomolgus" = "royalblue2"), labels =c("human VS\ngorilla", "human VS\ncynomolgus"),  name = "species pair") +

@@ -231,7 +231,7 @@ saveRDS(lm_overall, here(wd, "lm_overall.rds"))
 module_conservation_overall <- findConservedDivergedModules(tree_stats_filt, lm_overall)
 saveRDS(module_conservation_overall, here(wd, "module_conservation_overall.rds"))
 
-table(module_conservation_overall$conservation)
+table(module_conservation_overall$category)
 
 # plot module conservation and mark the most conserved and diverged modules
 plotConservedDivergedModules(module_conservation_overall)
@@ -239,18 +239,31 @@ ggsave(here(wd, "figures/module_conservation_overall.png"), width = 6.5, height 
 
 # get the conserved and diverged modules (ordered by the degree of conservation/divergence)
 cons_modules <- module_conservation_overall %>%
-  dplyr::filter(conservation == "conserved") %>%
+  dplyr::filter(category == "conserved") %>%
   arrange(residual) %>% 
   pull(regulator) %>% 
   as.character()
 cons_modules
 
 div_modules <- module_conservation_overall %>%
-  dplyr::filter(conservation == "diverged") %>%
+  dplyr::filter(category == "diverged") %>%
   arrange(desc(residual)) %>% 
   pull(regulator) %>% 
   as.character()
 div_modules
+
+# robust subset of conserved and diverged modules
+module_conservation_overall %>%
+  dplyr::filter(category == "conserved" & robust) %>%
+  arrange(residual) %>% 
+  pull(regulator) %>% 
+  as.character()
+
+module_conservation_overall %>%
+  dplyr::filter(category == "diverged" & robust) %>%
+  arrange(residual) %>% 
+  pull(regulator) %>% 
+  as.character()
 
 # get the 5 most conserved and 5 most diverged modules
 top5_cons_div_modules <- c(cons_modules[1:5], div_modules[1:5])
@@ -286,10 +299,10 @@ saveRDS(target_contributions_overall, here(wd, "target_contributions_overall.rds
 # plot target contributions
 target_contributions_overall %>% 
   dplyr::filter(regulator %in% top5_cons_div_modules & type == "jk") %>% 
-  inner_join(module_conservation_overall %>% dplyr::select(regulator, conservation)) %>% 
+  inner_join(module_conservation_overall %>% dplyr::select(regulator, category)) %>% 
   dplyr::mutate(regulator = factor(regulator, top5_cons_div_modules)) %>% 
   group_by(regulator) %>% 
-  dplyr::mutate(to_label = ifelse(contribution %in% sort(contribution, decreasing = TRUE)[1:2], unique(conservation), "no_label")) %>% 
+  dplyr::mutate(to_label = ifelse(contribution %in% sort(contribution, decreasing = TRUE)[1:2], unique(category), "no_label")) %>% 
   ggplot(aes(x = regulator, y = contribution, color = to_label)) +
   geom_quasirandom(aes(size = to_label)) +
   theme_bw() +
@@ -332,7 +345,7 @@ saveRDS(lm_human, here(wd, "lm_human.rds"))
 module_conservation_human <- findConservedDivergedModules(tree_stats_filt, lm_human)
 saveRDS(module_conservation_human, here(wd, "module_conservation_human.rds"))
 
-table(module_conservation_human$conservation)
+table(module_conservation_human$category)
 
 # plot module conservation and mark the diverged modules
 plotConservedDivergedModules(module_conservation_human)
@@ -340,7 +353,7 @@ ggsave(here(wd, "figures/module_conservation_human.png"), width = 7.4, height = 
 
 # get human-diverged modules
 human_div_modules <- module_conservation_human %>%
-  dplyr::filter(conservation == "diverged") %>%
+  dplyr::filter(category == "diverged") %>%
   arrange(desc(residual)) %>% 
   pull(regulator) %>% 
   as.character()
@@ -421,7 +434,7 @@ saveRDS(lm_gorilla, here(wd, "lm_gorilla.rds"))
 module_conservation_gorilla <- findConservedDivergedModules(tree_stats_filt, lm_gorilla)
 saveRDS(module_conservation_gorilla, here(wd, "module_conservation_gorilla.rds"))
 
-table(module_conservation_gorilla$conservation)
+table(module_conservation_gorilla$category)
 
 # plot module conservation and mark the diverged modules
 plotConservedDivergedModules(module_conservation_gorilla)
@@ -429,7 +442,7 @@ ggsave(here(wd, "figures/module_conservation_gorilla.png"), width = 7.4, height 
 
 # get gorilla-diverged modules
 gorilla_div_modules <- module_conservation_gorilla %>%
-  dplyr::filter(conservation == "diverged") %>%
+  dplyr::filter(category == "diverged") %>%
   arrange(desc(residual)) %>% 
   pull(regulator) %>% 
   as.character()

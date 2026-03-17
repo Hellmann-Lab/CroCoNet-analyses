@@ -246,13 +246,16 @@ plot_umap_split2 <- function(seu, color_by, split_by ="individual", colors = NUL
     left_join(seu@meta.data) %>% 
     dplyr::rename(umap_1 = .data[[paste0(gsub("\\.|\\_", "", reduction), "_1")]], umap_2 = .data[[paste0(gsub("\\.|\\_", "", reduction), "_2")]])
   
-  gRNAs <- levels(umap_df[[color_by]])[1]
+  gRNAs1 <- levels(umap_df[[color_by]])[1]
+  gRNAs2 <- levels(umap_df[[color_by]])[2]
+  gRNAs3 <- levels(umap_df[[color_by]])[3]
   
   ggplot(umap_df, aes(x = umap_1, y = umap_2, color = .data[[color_by]])) +
     theme_bw(base_size = text_size) +
     facet_wrap(~.data[[split_by]], scales = "free") +
-    geom_point(data = . %>% dplyr::filter(.data[[color_by]] != gRNAs), size = point_size, alpha = 0.3) +
-    geom_point(data = . %>% dplyr::filter(.data[[color_by]] == gRNAs), size = point_size*1.5, alpha = 0.7) +
+    geom_point(data = . %>% dplyr::filter(.data[[color_by]] == gRNAs3), size = point_size, alpha = 0.3) +
+    geom_point(data = . %>% dplyr::filter(.data[[color_by]] == gRNAs2), size = point_size, alpha = 0.5) +
+    geom_point(data = . %>% dplyr::filter(.data[[color_by]] == gRNAs1), size = point_size*1.5, alpha = 0.7) +
     scale_color_manual(values = colors, breaks = c("best POU5F1\ngRNA pair", "other POU5F1\ngRNAs", "control")) +
     guides(color = guide_legend(override.aes = list(size = text_size / 3.75, alpha = 1))) +
     theme(panel.grid.major = element_blank(),
@@ -261,7 +264,7 @@ plot_umap_split2 <- function(seu, color_by, split_by ="individual", colors = NUL
           axis.text = element_blank(),
           axis.ticks = element_blank(),
           panel.spacing = ggplot2::unit(0.1, "lines"),
-          legend.key.spacing.y = unit(0.5, "cm"),
+          legend.key.spacing.y = unit(1.9, "cm"),
           legend.title = element_blank(),
           strip.background = element_blank(),
           strip.text.x = element_blank())
@@ -579,8 +582,7 @@ DE_testing_LMM <- function(sce, n_cores = 20) {
 }
 
 
-# plot DE results across positively or negatively correlated module memebr genes and non-module genes
-plot_DE_results <- function(de_results, pruned_modules, all_genes, label = NULL) {
+plot_DE_results <- function(de_results, pruned_modules, all_genes) {
   
   # all genes tested in Perturb-seq DE analysis
   all_genes_perturbseq <- unique(de_results$gene)
@@ -608,37 +610,32 @@ plot_DE_results <- function(de_results, pruned_modules, all_genes, label = NULL)
   max_lfc <- max(c(de_results_filt$logFC_upr.human, de_results_filt$logFC_upr.cynomolgus))
   min_lfc <- min(c(de_results_filt$logFC_lwr.human, de_results_filt$logFC_lwr.cynomolgus))
   
-  p <- de_results_filt %>%
+  de_results_filt %>%
     ggplot(aes(x = logFC.human, y = logFC.cynomolgus, color = category, size = category)) +
-    geom_errorbar(aes(xmin = logFC_lwr.human, xmax = logFC_upr.human, color = category), size = 0.07, alpha = 0.5, show.legend = FALSE) +
-    geom_errorbar(aes(ymin = logFC_lwr.cynomolgus, ymax = logFC_upr.cynomolgus, color = category), size = 0.07, alpha = 0.5, show.legend = FALSE) +
+    geom_errorbar(aes(xmin = logFC_lwr.human, xmax = logFC_upr.human, color = category), size = 0.1, alpha = 0.5, show.legend = FALSE) +
+    geom_errorbar(aes(ymin = logFC_lwr.cynomolgus, ymax = logFC_upr.cynomolgus, color = category), size = 0.1, alpha = 0.5, show.legend = FALSE) +
     geom_point(data = . %>% dplyr::filter(category == "not in\nmodule"), aes(color = category), size = 0.005, alpha = 0.7) +
-    geom_point(data = . %>% dplyr::filter(category != "not in\nmodule"), aes(color = category), size = 0.5) +
+    geom_point(data = . %>% dplyr::filter(category != "not in\nmodule"), aes(color = category), size = 0.8) +
     geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
-    theme_bw(base_size = 14) +
-    scale_color_manual(values = c("activated\ntargets" = "darkseagreen4", "repressed\ntargets" = "indianred3", "not in\nmodule" = "grey70")) +
+    theme_bw(base_size = 13) +
+    scale_color_manual(values = c("activated\ntargets" = "darkseagreen4", "repressed\ntargets" = "indianred3", "not in\nmodule" = "grey70"),
+                       labels = c("not in\nmodule\n",
+                                  "positively\ncorrelated\ntargets\n",
+                                  "negatively\ncorrelated\ntargets\n")) +
     scale_size_manual(values = c("TRUE" = 0.2, `no significant difference` = 0.05), guide = "none") +
+    geom_label_repel(data = . %>% filter(gene == "SPP1"),
+                     aes(label = gene), fill = "white", size = 4, label.size = 0.1, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, max.overlaps = 10, show.legend = FALSE, ylim = c(NA, -2)) +
     xlab(expression(paste(log[2], FC, " (human)"))) +
     ylab(expression(paste(log[2], FC, " (cynomolgus)"))) +
     theme(legend.title = element_blank(),
           legend.key.spacing.y = unit(0.4, "cm"),
-          legend.margin = margin(l = -10)) +
+          legend.margin = margin(l = -10),
+          legend.text = element_text(size = 11.5)) +
     xlim(min_lfc, max_lfc) +
     ylim(min_lfc, max_lfc)
   
-  if (!is.null(label)) {
-    
-    p <- p + geom_label_repel(data = . %>% filter(gene %in% label),
-                     aes(label = gene), fill = "white", size = 3, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, max.overlaps = 10, show.legend = FALSE)
-    
-  }
-  
-  p
-  
 }
 
-
-# plot DE and DR results and highlight module member genes
 plot_module_members <- function(de_results, pruned_modules, all_genes) {
   
   # all genes tested in Perturb-seq DE analysis
@@ -669,26 +666,24 @@ plot_module_members <- function(de_results, pruned_modules, all_genes) {
     ggplot(aes(x = x, y = logFC)) +
     geom_hline(yintercept = 0, linetype = "dashed", color = "grey40") +
     geom_boxplot(aes(fill = category), linewidth = 0.2, outlier.size = 0.1, outlier.alpha = 0.7) +
-    theme_bw(base_size = 14) +
+    theme_bw(base_size = 13) +
     scale_fill_manual(values = c("activated\ntargets" = "darkseagreen4", "repressed\ntargets" = "indianred3", "not in\nmodule" = "grey70")) +
     ylab(expression(paste(log[2], "FC")))  +
     guides(fill = guide_legend(byrow = TRUE)) +
     theme(axis.title.x = element_blank(),
-          axis.text.x = element_text(size = 14, color = "black"),
+          axis.text.x = element_text(size = 13, color = "black"),
           legend.title = element_blank()) +
     geom_signif(comparisons = list(c("human_not in\nmodule", "human_activated\ntargets"), 
                                    c("human_not in\nmodule", "human_repressed\ntargets"),
                                    c("cynomolgus_not in\nmodule", "cynomolgus_activated\ntargets"), 
                                    c("cynomolgus_not in\nmodule", "cynomolgus_repressed\ntargets")),
-                map_signif_level = c("****"=0.0002, "***"=0.002, "**"=0.02, "*"=0.1, "." = 0.2), # ugly implementation of one-tailed tests
+                map_signif_level = c("***"=0.002, "**"=0.02, "*"=0.1, "." = 0.2), # ugly implementation of one-tailed tests
                 y_position = c(3.2, 3.45, 3.2, 3.45),
                 textsize = 2.5, size = 0.2, vjust = c(rep(0.4, 3), rep(0.4, 3), rep(0.4, 6)), tip_length = 0.02) +
     scale_x_discrete(limits =  c("human_not in\nmodule", "human_activated\ntargets", "human_repressed\ntargets", "spacer", "cynomolgus_not in\nmodule", "cynomolgus_activated\ntargets", "cynomolgus_repressed\ntargets"), breaks = c("human_activated\ntargets", "cynomolgus_activated\ntargets"), labels = c("human", "cynomolgus"))
   
 }
 
-
-# plot POU5F1 and SPP1 expression levels
 plot_POU5F1_SPP1_expr <- function(sce) {
   
   logcnts <- logcounts(sce)
@@ -702,14 +697,15 @@ plot_POU5F1_SPP1_expr <- function(sce) {
     pivot_longer(cols = c("POU5F1", "SPP1"), names_to = "gene", values_to = "expr") %>% 
     ggplot(aes(y = condition, x = expr, fill = condition)) +
     geom_boxplot(linewidth = 0.2, outlier.size = 0.1, outlier.alpha = 0.7) +
-    theme_bw(base_size = 14) +
+    theme_bw(base_size = 13) +
     facet_nested(gene + species ~ ., scales = "free_y") +
     xlab("expression [logcounts]") +
-    scale_fill_manual(values = c("orange2", "peachpuff1"), guide = "none") +
-    theme(axis.text.y = element_text(size = 10, color = "black"),
+    scale_fill_manual(values = c("maroon", "grey70"), guide = "none") +
+    theme(axis.text.y = element_text(size = 11.5, color = "black"),
           axis.title.y = element_blank(),
           panel.spacing.y = unit(0.01, "npc"),
-          strip.text = element_text(size = 9))
+          strip.text = element_text(size = 8.5))
   
   
 }
+

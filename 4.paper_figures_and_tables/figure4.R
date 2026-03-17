@@ -19,7 +19,7 @@ fig_dir <- here("data/paper_figures_and_tables/")
 ## POU5F1 target expression ---------------------------------------------
 
 # cell type colors
-ct_colors <- setNames(c("#86C1E6", "#F4AB62", "#CA6102"),
+ct_colors <- setNames(c("#86C1E6", "#F4AB62", "#914601"),
                       c("Pluripotent_Cells", "Early_Ectoderm",  "Neurons"))
 
 spec_colors <- setNames(c("#8dc238", "#2292c4", "#aa38d8"),
@@ -48,7 +48,8 @@ p1
 ## LTR7 enrichment near POU5F1 module members ------------------------------------------------------
 
 # load gene-LTR7 element associations
-ltr7_near_pou5f1_module_members <- readRDS(here("data/validations/POU5F1_LTR7_enrichment/LTR7_near_POU5F1_module_members.rds"))
+ltr7_near_pou5f1_module_members <- readRDS(here("data/validations/POU5F1_LTR7_enrichment/LTR7_near_POU5F1_module_members.rds")) %>% 
+  dplyr::filter(expr_in_iPSCs)
 
 # plot the fraction of genes with nearby LTR7 element(s) in the POU5F1 module and across the rest of the genes
 p2 <- ltr7_near_pou5f1_module_members %>% 
@@ -57,8 +58,8 @@ p2 <- ltr7_near_pou5f1_module_members %>%
   dplyr::mutate(frac = n / sum(n)) %>% 
   ungroup() %>% 
   dplyr::filter(ltr7_type != "no_ltr7") %>% 
-  dplyr::mutate( ltr7_type = ifelse(ltr7_type %in% c('ltr7_pou5f1_ape_specific', 'ltr7_pou5f1_human_specific'), "ltr7_pou5f1_lineage_specific", ltr7_type),
-                 ltr7_type = factor(ltr7_type, levels = c("ltr7_no_pou5f1", "ltr7_pou5f1_cyno_ortholog", 'ltr7_pou5f1_lineage_specific'))) %>%
+  dplyr::mutate(ltr7_type = ifelse(ltr7_type %in% c('ltr7_pou5f1_ape_specific', 'ltr7_pou5f1_human_specific'), "ltr7_pou5f1_lineage_specific", ltr7_type),
+                ltr7_type = factor(ltr7_type, levels = c("ltr7_no_pou5f1", "ltr7_pou5f1_cyno_ortholog", 'ltr7_pou5f1_lineage_specific'))) %>%
   ggplot(aes(x = pou5f1_module_member,  y = frac, fill = ltr7_type)) +
   geom_bar(stat = "identity") +
   theme_bw(base_size = 13) +
@@ -67,8 +68,10 @@ p2 <- ltr7_near_pou5f1_module_members %>%
   ylab("fraction of genes with\nassociated LTR7 element(s)") +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(size = 13, color = "black"),
+        legend.text = element_text(size = 11.5, lineheight = 0.7, margin = margin(t = 0.8, b = 0.8)),
+        legend.key.height = unit(1, 'cm'),
         legend.position = "none") +
-  scale_x_discrete(limits = c(TRUE, FALSE), breaks = c(TRUE, FALSE), labels = c("POU5F1 module", "other"))
+  scale_x_discrete(limits = c(TRUE, FALSE), breaks = c(TRUE, FALSE), labels = c("POU5F1\nmodule", "other"))
 p2
 
 
@@ -79,9 +82,10 @@ source(here("scripts/2.validations/2.8.POU5F1_CRISPRi/helper_functions.R"))
 
 # load Seurat object
 seu <- readRDS(here("data/validations/POU5F1_CRISPRi_processed_data/seu.rds"))
+seu$gRNAs_of_interest <- factor(gsub("other targeting\ngRNAs", "other POU5F1\ngRNAs", as.character(seu$gRNAs_of_interest)), c("best POU5F1\ngRNA pair", "other POU5F1\ngRNAs", "control"))
 
 # plot UMAPs
-p3 <- plot_umap_split2(seu, "gRNAs_of_interest", "species", c("best POU5F1\ngRNA pair" = "maroon", "other POU5F1\ngRNAs" = "grey40", "control" = "grey70"), "umap_per_species", point_size = 1, legend_title = "") +
+p3 <- plot_umap_split2(seu, "gRNAs_of_interest", "species", c("best POU5F1\ngRNA pair" = "maroon", "other POU5F1\ngRNAs" = "#e18fae", "control" = "grey70"), "umap_per_species", point_size = 1, legend_title = "") +
   theme(axis.title = element_blank(),
         plot.margin = margin(b = 0),
         legend.text = element_text(size = 30))
@@ -150,6 +154,9 @@ bottom <- wrap_plots(p2,
 top <- plot_grid(NULL, p1, NULL, ncol = 3, rel_widths = c(0.0832, 0.8, 1.252)) &
   theme(plot.background = element_rect(fill = "white", color = "transparent"))
 
-ggsave(here(fig_dir, "figure4_expr_LTR7_DE_results.png"), 
-       plot_grid(top, bottom, ncol = 1, rel_heights = c(1, 2.1)), 
-       width = 13, height = 10.85)
+ggplot2::ggsave(here(fig_dir, "figure4_expr_LTR7_DE_results.png"), 
+                plot_grid(top, bottom, ncol = 1, rel_heights = c(1, 2.1)),
+                width = 13, height = 10.85)
+
+
+# gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress -dNOPAUSE -dQUIET -dBATCH -sOutputFile=figure4.pdf figure4_uncompressed.pdf

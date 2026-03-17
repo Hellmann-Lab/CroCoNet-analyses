@@ -1,0 +1,346 @@
+---
+title: "Processing the NANOG ChIP-seq data from Barakat et al. 2018"
+output: html_document
+date: "2025-03-06"
+editor_options: 
+  chunk_output_type: console
+---
+
+# Data download
+
+```{sh download}
+pd=/your/project/directory/
+wd=$pd/data/validations/NANOG_ChIP_seq
+mkdir -p $wd/fastq
+mkdir -p $wd/logs
+cd $wd/fastq
+
+for srr in SRR5642846 SRR5642844 SRR7538369; do
+
+  sbatch \
+    --job-name=download_${srr} \
+    --output=$wd/logs/download_${srr}_%j.out \
+    --error=$wd/logs/download_${srr}_%j.err \
+    -c 8 \
+    --mem=16G \
+    --wrap="fasterq-dump \
+      --split-files \
+      --threads 8 \
+      --outdir $wd/fastq \
+      $srr"
+
+done
+```
+
+```{sh rename}
+cat > rename_map.txt <<'EOF'
+SRR5642846	NANOG_ChIP_H9_hESCs
+SRR5642844	input_H9_hESCS_repl1
+SRR7538369	input_H9_hESCs_repl2
+EOF
+
+while read old new; do
+  mv "${old}.fastq" "${new}.fastq"
+done < rename_map.txt
+```
+
+```{sh compress}
+for f in *.fastq; do
+  sample=${f%.fastq}
+
+  sbatch \
+    --job-name=compress_${sample} \
+    --output=$wd/logs/compress_${sample}_%j.out \
+    --error=$wd/logs/compress_${sample}_%j.err \
+    -c 8 \
+    --mem=4G \
+    --wrap="pigz -p 8 $f"
+done
+```
+
+```{sh qc}
+mkdir -p $wd/fastq/fastqc
+for f in *.fastq.gz; do
+  sample=${f%.fastq.gz}
+
+  sbatch \
+    --job-name=fastqc_${sample} \
+    --output=$wd/logs/fastqc_${sample}_%j.out \
+    --error=$wd/logs/fastqc_${sample}_%j.err \
+    -c 4 \
+    --mem=4G \
+    --wrap="fastqc -o $wd/fastq/fastqc $f"
+done
+```
+
+```{sh trim}
+mkdir -p $wd/trimmed_fastq
+
+for f in *.fastq.gz; do
+  sample=${f%.fastq.gz}
+  sbatch \
+    --output=$wd/logs/trimming_${sample}_%j.out \
+    --error=$wd/logs/trimming_${sample}_%j.err \
+    --job-name=trimming_${f%.fastq.gz} \
+    -c 20 \
+    --mem=12G \
+    --wrap="cutadapt -j 20 \
+      -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCA \
+      -o $wd/trimmed_fastq/${f%.fastq.gz}_trimmed.fastq.gz \
+      $f"
+done
+```
+
+# Bowtie alignment
+
+```{sh bowtie2_index}
+mkdir -p $wd/mapping
+mkdir -p $wd/mapping/index
+sbatch --job-name=bowtie2_index_genome_hg38 --wrap="bowtie2-build $pd/data/neural_differentiation_dataset/genomes/hg38/genome.fa hg38"
+```
+
+```{sh map}
+index=$wd/mapping/index/hg38
+
+for fq in $wd/trimmed_fastq/*.fastq.gz; do
+  sample=$(basename "$fq" .fastq.gz | sed 's/_trimmed$//')
+
+  sbatch \
+    --job-name=bowtie_${sample} \
+    --output=$wd/logs/bowtie_${sample}_%j.out \
+    --error=$wd/logs/bowtie_${sample}_%j.err \
+    -c 16 \
+    --mem=16G \
+    --wrap="
+      bowtie2 \
+        -x $index \
+        -U $fq \
+        --threads 16 \
+      | samtools view -@ 4 -bS - \
+      | samtools sort -@ 4 -o $wd/mapping/${sample}.sorted.bam
+    "
+done
+```
+
+
+# MACS3 peak calling
+
+```{sh mark_duplicates}
+for bam in $wd/mapping/*.sorted.bam; do
+  sample=$(basename "$bam" .sorted.bam)
+
+  sbatch \
+    --job-name=dedup_${sample} \
+    --output=$wd/logs/dedup_${sample}_%j.out \
+    --error=$wd/logs/dedup_${sample}_%j.err \
+    -c 4 \
+    --mem=16G \
+    --wrap="
+      picard-tools MarkDuplicates \
+        I=$bam \
+        O=$wd/mapping/${sample}.dedup.bam \
+        M=$wd/mapping/${sample}.dup_metrics.txt \
+        VALIDATION_STRINGENCY=SILENT && \
+      samtools index -@ 4 $wd/mapping/${sample}.dedup.bam
+    "
+done
+```
+
+```{sh macs3_enr}
+# 1) Create a new Conda environment for MACS3
+conda create -n macs3_env python=3.10 -y
+
+# 2) Activate the environment
+conda activate macs3_env
+
+# 3) Install MACS3 from Bioconda
+conda install -c bioconda macs3 -y
+
+# Optional: check that macs3 is installed
+macs3 --version
+```
+
+```{sh call_peaks}
+mkdir -p $wd/peaks
+sbatch \
+  --job-name=macs3_peaks \
+  --output=$wd/logs/macs3_peaks_%j.out \
+  --error=$wd/logs/macs3_peaks_%j.err \
+  -c 4 \
+  --mem=16G \
+  --wrap="
+    . $(conda info --base)/etc/profile.d/conda.sh
+    conda activate macs3_env
+    export PATH=\"\$CONDA_PREFIX/bin:\$PATH\"
+
+    macs3 callpeak \
+      -t $wd/mapping/NANOG_ChIP_H9_hESCs.dedup.bam \
+      -c $wd/mapping/input_H9_hESCs_repl1.dedup.bam $wd/mapping/input_H9_hESCs_repl2.dedup.bam \
+      -f BAM \
+      -g hs \
+      -n NANOG_ChIP_H9_hESCs \
+      --outdir $wd/peaks \
+      --keep-dup auto \
+      --qvalue 0.01
+  "
+```
+
+```{sh get_blacklist}
+cd $wd/peaks
+wget https://www.encodeproject.org/files/ENCFF356LFX/@@download/ENCFF356LFX.bed.gz
+gzip -d ENCFF356LFX.bed.gz
+```
+
+```{sh remove_blacklisted_regions}
+sbatch \
+    --job-name=exclude_blacklist \
+    --output=$wd/logs/exclude_blacklist_%j.out \
+    --error=$wd/logs/exclude_blacklist_%j.err \
+    -c 1 \
+    --mem=2G \
+    --wrap="
+
+      peaks_np=$wd/peaks/NANOG_ChIP_H9_hESCs_peaks.narrowPeak
+      peaks_bed=$wd/peaks/NANOG_ChIP_H9_hESCs_peaks.bed
+      blacklist=$wd/peaks/ENCFF356LFX.bed
+      output=$wd/peaks/NANOG_ChIP_H9_hESCs_peaks_BL.bed
+
+      # convert narrowPeak → BED (chr, start, end)
+      cut -f1-3 \$peaks_np > \$peaks_bed
+
+      # blacklist filtering
+      bedtools intersect -v \
+        -a \$peaks_bed \
+        -b \$blacklist \
+        > \$output
+
+      echo 'Blacklist filtering complete'
+      echo \"Input peaks: \$(wc -l < \$peaks_bed)\"
+      echo \"Output peaks: \$(wc -l < \$output)\"
+    "
+cp $wd/peaks/NANOG_ChIP_H9_hESCs_peaks_BL.bed $pd/data/validations/ChIP_seq/
+```
+
+# QC
+
+```{sh frip}
+mkdir -p $wd/peak_qc
+
+sbatch \
+  --job-name=frip_NANOG \
+  --output=$wd/logs/frip_NANOG_%j.out \
+  --error=$wd/logs/frip_NANOG_%j.err \
+  --mem=4G \
+  --wrap="
+
+    bam=$wd/mapping/NANOG_ChIP_H9_hESCs.dedup.bam
+    peaks_bed=$wd/peaks/NANOG_ChIP_H9_hESCs_peaks.bed
+    outfile=$wd/peak_qc/NANOG_ChIP_H9_hESCs_FRiP.tsv
+    name=NANOG_ChIP_H9_hESCs
+
+    # total mapped reads
+    mapped=\$(samtools view -c -F 1804 \$bam)
+
+    # reads overlapping peaks
+    inpeaks=\$(bedtools intersect -a \$bam -b \$peaks_bed -ubam | samtools view -c)
+
+    frip=\$(awk -v a=\$inpeaks -v b=\$mapped 'BEGIN{printf \"%.6f\", a/b}')
+
+    printf \"%s\t%s\t%s\t%s\n\" \$name \$mapped \$inpeaks \$frip >> \$outfile
+"
+```
+
+```{r load_libraries}
+library(tidyverse)
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+library(ChIPseeker)
+library(plyranges)
+library(ggsignif)
+library(rtracklayer)
+library(here)
+
+here::i_am("scripts/2.validations/2.6.ChIP_seq/NANOG_ChIP_seq.Rmd")
+wd <- here("data/validations/ChIP_seq_enrichment")
+fig_dir <- here(wd, "figures")
+dir.create(fig_dir)
+```
+
+```{r tss_enrichment}
+chip_peaks <- import(here(wd, "NANOG_ChIP_H9_hESCs_peaks_BL.bed")) %>% 
+  filter(!seqnames %in% c("chrM", "chrY")) %>% 
+  mutate(name = paste0("peak_", 1:length(start)))
+seqlevelsStyle(chip_peaks)
+nrow(as_tibble(chip_peaks))
+
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+promoter <- getPromoters(TxDb = txdb, upstream = 3000, downstream = 3000)
+tagMatrix <- getTagMatrix(chip_peaks, windows = promoter)
+ChIPseeker::tagHeatmap(tagMatrix)
+ggsave(here("data/validations/NANOG_ChIP_seq/peak_qc/tss_enrichment_heatmap.png"), width = 5, height = 4)
+
+plotAvgProf2(chip_peaks, TxDb=txdb, upstream=3000, downstream=3000,
+             xlab="Genomic Region (5'->3')", ylab = "Read Count Frequency", conf = 0.95, resample = 1000)
+ggsave(here("data/validations/NANOG_ChIP_seq/peak_qc/tss_enrichment_avg_profile.png"), width = 5, height = 4)
+```
+
+# Module enrichment
+
+```{r atac_peaks_module_genes}
+# all genes in network
+all_genes <- readRDS(here("data/neural_differentiation_dataset/processed_data/genes.rds"))
+
+# NANOG module members
+NANOG_mod_genes <- readRDS(here("data/neural_differentiation_dataset/CroCoNet_analysis/pruned_modules.rds")) %>% 
+  dplyr::filter(regulator == "NANOG") %>% 
+  pull(target) 
+
+# load human iPSC ATAC-seq data
+atac_peaks <- readRDS(here("data/validations/ATAC_seq_peak_to_gene_associations/human_peak2gene_associations.rds")) %>% 
+  dplyr::filter(origin != "unique_npc" & gene_name %in% all_genes) %>% 
+  dplyr::transmute(seqnames, start = start.ipsc, end = end.ipsc, name = name.ipsc, gene_name, in_module = gene_name %in% NANOG_mod_genes) %>% 
+  as_granges()
+```
+
+```{r overlaps}
+overlaps <- join_overlap_left(atac_peaks, chip_peaks) %>% 
+  as_tibble() %>% 
+  group_by(gene_name, in_module) %>% 
+  dplyr::summarise(overlap_chipseq = sum(!is.na(name.y)) > 0) %>% 
+  ungroup() %>% 
+  dplyr::count(in_module, overlap_chipseq) %>% 
+  dplyr::mutate(in_module = ifelse(in_module, "yes", "no"),
+                overlap_chipseq = ifelse(overlap_chipseq, "yes", "no")) 
+saveRDS(overlaps, here(wd, "NANOG_ChIP_module_overlaps_hPSCs.rds"))
+
+table <- overlaps %>% 
+  pivot_wider(names_from = "in_module", values_from = "n") %>% 
+  column_to_rownames("overlap_chipseq") %>% 
+  as.matrix()
+table
+
+fisher_test_result <- fisher.test(table)
+fisher_test_result
+```
+
+```{r plot_overlaps}
+annot <- case_when(fisher_test_result$p.value < 0.001 ~ "***",
+                   fisher_test_result$p.value < 0.01 ~ "**",
+                   fisher_test_result$p.value < 0.05 ~ "*",
+                   T ~ "n.s.")
+overlaps %>% 
+  group_by(in_module) %>% 
+  dplyr::mutate(frac = n / sum(n)) %>% 
+  dplyr::filter(overlap_chipseq == "yes") %>% 
+  dplyr::mutate(in_module = factor(ifelse(in_module == "yes", "NANOG\nmodule", "other"), c("other", "NANOG\nmodule"))) %>% 
+  ggplot(aes(y = in_module, x = frac, fill = in_module)) +
+  geom_bar(stat = "identity", position = "stack") +
+  theme_bw(base_size = 14) +
+  xlab("fraction of genes with associated\nNANOG ChIP-seq peak(s)") +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 14, color = "black"),
+        plot.margin = margin(5.5, 30, 5.5, 5.5)) +
+  scale_fill_manual(values = c("grey60", "#08635C"), guide = "none") +
+  geom_signif(comparisons = list(c("NANOG\nmodule", "other")), annotations = annot, vjust = 0.4, size = 0.3) +
+  scale_x_continuous(expand = expansion(mult = c(0.05, 0.08)))
+ggsave(here(fig_dir, "NANOG_ChIP_module_overlaps_hPSCs.png"), width = 5, height = 3)
+```

@@ -102,7 +102,7 @@ lm_overall <- fitTreeStatsLm(tree_stats_filt, focus = "overall")
 saveRDS(lm_overall, here(output_dir, "lm_overall_top50.rds"))
 
 module_conservation_overall <- findConservedDivergedModules(tree_stats_filt, lm_overall)
-saveRDS(module_conservation_overall, here(output_dir, "module_conservation_overall_top50.rds"))
+saveRDS(module_conservation_overall, here(output_dir, "module_conservation_overall.rds"))
 
 # plot module conservation and mark the most conserved and diverged modules
 plotConservedDivergedModules(module_conservation_overall)

@@ -175,7 +175,7 @@ p4 <- random_vs_actual_pres %>%
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(color = "black", size = 14)) +
   ylab(expression(Delta * ~italic(cor.kIM)[actual - random])) +
-  geom_signif(comparisons = list(c("dynamic\npruning", "top50\npruning")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
+  geom_signif(comparisons = list(c("dynamic\npruning", "top50\npruning")), test.args = list(paired = TRUE), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
 p4
 
@@ -207,9 +207,9 @@ p5 <- pres_vs_phyl %>%
   theme_bw(base_size = 14) +
   scale_fill_manual(values = c("dynamic\npruning" = "royalblue3", "top50\npruning" = "steelblue1"), guide = "none") +
   theme(axis.title.x = element_blank(),
-        axis.text.x = element_text(color = "black", size = 14, face = "italic")) +
+        axis.text.x = element_text(color = "black", size = 14)) +
   ylab(expression(-italic(r)[italic(cor.kIM) * ", " * phylogenetic~distance])) +
-  geom_signif(comparisons = list(c("dynamic\npruning", "top50\npruning")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
+  geom_signif(comparisons = list(c("dynamic\npruning", "top50\npruning")), test.args = list(paired = TRUE), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
 p5
 
@@ -225,7 +225,7 @@ p6 <- bind_rows("dynamic\npruning" = tree_stats,
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(color = "black", size = 14)) +
   ylab(expression(frac("total tree length", "within-species diversity"))) +
-  geom_signif(comparisons = list(c("dynamic\npruning", "top50\npruning")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
+  geom_signif(comparisons = list(c("dynamic\npruning", "top50\npruning")), test.args = list(paired = TRUE), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
 p6
 
@@ -238,7 +238,7 @@ module_conservation_overall_top50 <- readRDS(here(dir_top50, "module_conservatio
 
 # get the 5 most conserved modules from the main analysis (using dynamic pruning)
 cons_modules <- module_conservation_overall %>% 
-  dplyr::filter(conservation == "conserved") %>% 
+  dplyr::filter(category == "conserved") %>% 
   slice_min(order_by = residual, n = 5) %>% 
   pull(regulator) %>% 
   as.character()
@@ -254,41 +254,41 @@ module_conservation_overall_top50 %>%
 
 # plot conservation ranking
 p7 <- module_conservation_overall %>%
-  dplyr::mutate(size = ifelse(regulator == "HOXA2", "HOXA2", conservation)) %>% 
+  dplyr::mutate(size = ifelse(regulator == "HOXA2", "HOXA2", category)) %>% 
   ggplot(aes(x = within_species_diversity, y = total_tree_length)) +
   geom_line(aes(y = fit), color = "grey30", linewidth = 0.5) +
   geom_ribbon(aes(ymin = lwr_fit, ymax = upr_fit), fill = "grey80", alpha = 0.5) +
-  geom_point(aes(color = conservation, size = size)) +
+  geom_point(aes(color = category, size = size)) +
   theme_bw(base_size = 16) +
-  scale_color_manual(values = c(diverged = "#AA4139", conserved = "#2B823A", not_significant = "black"), breaks = c("diverged", "conserved")) +
-  scale_size_manual(values = c(HOXA2 = 2, diverged = 0.5, conserved = 0.5, not_significant = 0.05), guide = "none") +
+  scale_color_manual(values = c(diverged = "#AA4139", conserved = "#2B823A", within_expectation = "black"), breaks = c("diverged", "conserved")) +
+  scale_size_manual(values = c(HOXA2 = 2, diverged = 0.5, conserved = 0.5, within_expectation = 0.05), guide = "none") +
   xlab("within-species diversity") +
   ylab("total tree length") +
   theme(legend.title = element_blank()) +
-  geom_errorbar(aes(xmin = lwr_within_species_diversity, xmax = upr_within_species_diversity, color = conservation), linewidth = 0.2) +
-  geom_errorbar(aes(ymin = lwr_total_tree_length, ymax = upr_total_tree_length, color = conservation), linewidth = 0.2) +
+  geom_errorbar(aes(xmin = lwr_within_species_diversity, xmax = upr_within_species_diversity, color = category), linewidth = 0.2) +
+  geom_errorbar(aes(ymin = lwr_total_tree_length, ymax = upr_total_tree_length, color = category), linewidth = 0.2) +
   ggrepel::geom_label_repel(data = . %>% dplyr::filter(regulator == "HOXA2"),
-                            aes(label = regulator, color = conservation),
+                            aes(label = regulator, color = category),
                             fill = "white", size = 5, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, force = 2, max.overlaps = 20, show.legend = FALSE, ylim = c(NA, 0.8)) +
   labs(title = "dynamic pruning", subtitle = paste0('# of modules passing robustness filter: ', nrow(module_conservation_overall)))+
   theme(plot.title = element_text(color = "royalblue3"))
 
 p8 <- module_conservation_overall_top50 %>%
-  dplyr::mutate(size = ifelse(regulator == "HOXA2", "HOXA2", conservation)) %>% 
+  dplyr::mutate(size = ifelse(regulator == "HOXA2", "HOXA2", category)) %>% 
   ggplot(aes(x = within_species_diversity, y = total_tree_length)) +
   geom_line(aes(y = fit), color = "grey30", linewidth = 0.5) +
   geom_ribbon(aes(ymin = lwr_fit, ymax = upr_fit), fill = "grey80", alpha = 0.5) +
-  geom_point(aes(color = conservation, size = size)) +
+  geom_point(aes(color = category, size = size)) +
   theme_bw(base_size = 16) +
-  scale_color_manual(values = c(diverged = "#AA4139", conserved = "#2B823A", not_significant = "black"), breaks = c("diverged", "conserved")) +
-  scale_size_manual(values = c(HOXA2 = 2, diverged = 0.5, conserved = 0.5, not_significant = 0.05), guide = "none") +
+  scale_color_manual(values = c(diverged = "#AA4139", conserved = "#2B823A", within_expectation = "black"), breaks = c("diverged", "conserved")) +
+  scale_size_manual(values = c(HOXA2 = 2, diverged = 0.5, conserved = 0.5, within_expectation = 0.05), guide = "none") +
   xlab("within-species diversity") +
   ylab("total tree length") +
   theme(legend.title = element_blank()) +
-  geom_errorbar(aes(xmin = lwr_within_species_diversity, xmax = upr_within_species_diversity, color = conservation), linewidth = 0.2) +
-  geom_errorbar(aes(ymin = lwr_total_tree_length, ymax = upr_total_tree_length, color = conservation), linewidth = 0.2) +
+  geom_errorbar(aes(xmin = lwr_within_species_diversity, xmax = upr_within_species_diversity, color = category), linewidth = 0.2) +
+  geom_errorbar(aes(ymin = lwr_total_tree_length, ymax = upr_total_tree_length, color = category), linewidth = 0.2) +
   ggrepel::geom_label_repel(data = . %>% dplyr::filter(regulator == "HOXA2"),
-                            aes(label = regulator, color = conservation),
+                            aes(label = regulator, color = category),
                             fill = "white", size = 5, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, force = 2, max.overlaps = 20, show.legend = FALSE, ylim = c(NA, 1.5)) +
   labs(title = "top50 pruning", subtitle = paste0('# of modules passing robustness filter: ', nrow(module_conservation_overall_top50))) +
   theme(plot.title = element_text(color = "steelblue1"))
@@ -298,22 +298,22 @@ wrap_plots(p7, p8, guides = "collect") & theme(legend.position = "bottom", legen
 
 ## Combine --------------------------------------------------------------
 
-upper_level <- plot_grid(p3, p6, p7, p8, ncol = 4, axis = "tb", align = "h", rel_widths = c(1.2, 0.96, 0.96, 1.08)) & theme(plot.margin = margin(5.5, 5.5, 5.5, 5.5))
+upper_level <- plot_grid(p1, p4, p5, p6, ncol = 4, axis = "tb", align = "h", rel_widths = c(1.2, 0.96, 0.96, 1.08)) & theme(plot.margin = margin(5.5, 5.5, 5.5, 5.5))
 upper_level
 
-mid_level <- plot_spacer() + p4 + p5 + plot_layout(widths = c(0.35, 3, 1)) & theme(plot.margin = margin(0, 5.5, 0, 5.5))
+mid_level <- plot_spacer() + p2 + p3 + plot_layout(widths = c(0.35, 3, 1)) & theme(plot.margin = margin(0, 5.5, 0, 5.5))
 mid_level
 
-lower_level <- wrap_plots(p1, p2, guides = "collect")
+lower_level <- wrap_plots(p7, p8, guides = "collect")
 lower_level
 
-plot_grid(upper_level, 
+p <- plot_grid(upper_level, 
           NULL,
           mid_level, 
           lower_level,
           ncol = 1, rel_heights = c(1, 0.03, 1.35, 1.55)) &
   theme(plot.background = element_rect(fill = "white", color = "transparent"))
-ggsave(here(fig_dir, "suppl.figureS4.png"), width = 15, height = 16.1, dpi = 600)
+ggsave(here(fig_dir, "suppl.figureS4.png"), p, width = 15, height = 16.1)
 
 
 ## Module trees ---------------------------------------------------------

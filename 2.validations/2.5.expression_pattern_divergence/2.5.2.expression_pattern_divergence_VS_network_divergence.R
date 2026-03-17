@@ -31,18 +31,18 @@ lfc_diff_per_spec_pair <- readRDS(here(wd, "de_results.rds")) %>%
                    species_pair = ifelse(contrast == "gorilla_human", "human VS gorilla", "human VS cynomolgus"),
                    lfc_diff = abs(logFC)) %>% 
   inner_join(module_conservation_overall) %>% 
-  dplyr::filter(conservation != "not_significant") %>%
+  dplyr::filter(category != "within_expectation") %>%
   inner_join(phylo_dist) %>% 
   dplyr::mutate(species_pair = factor(species_pair, c("human VS gorilla", "human VS cynomolgus")))
 
 # test whether regulators with conserved network modules tend to have higher protein sequence conservation than regulators with diverged network modules
-fit <- lm(lfc_diff ~ conservation + distance, 
+fit <- lm(lfc_diff ~ category + distance, 
           data = lfc_diff_per_spec_pair)
 summary(fit)
 
 # plot expression pattern divergence for regulators with conserved and diverged network modules
 lfc_diff_per_spec_pair  %>% 
-  ggplot(aes(x = conservation, y = lfc_diff)) +
+  ggplot(aes(x = category, y = lfc_diff)) +
   geom_beeswarm(aes(color = species_pair), dodge.width = 0.2, size = 1, cex = 2) +
   scale_color_manual(values = c("human VS gorilla" = "cyan3", "human VS cynomolgus" = "royalblue2"), labels = c("human VS\ngorilla", "human VS\ncynomolgus"), name = "species pair") +
   theme_bw(base_size = 14) +

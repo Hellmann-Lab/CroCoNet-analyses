@@ -136,39 +136,7 @@ expressed_genes_sc <- split(expressed_genes_sc$gene, expressed_genes_sc$name)
 
 # save
 saveRDS(expr_sc, "RDS/expression_summary_scRNAseq.rds")
-saveRDS(expressed_genes_sc, "RDS/expressed_genes_scRNAseq.rds")
-
-
-# ## Get expressed genes based on bulk data -------------
-# 
-# # read bulk expression data
-# dds <- readRDS("/data/share/htp/ATACseq/Novogene_ATAC/LTR7_HERVH/analysisRDS/bulk_ipsc_npsc_diff.RDS")
-# 
-# # conversion between ENSEMBL IDs to gene names
-# hg38_gtf <- plyranges::read_gff("/data/share/htp/hack_GRN/NPC_diff_network_analysis/01.mapping/genomes/hg38/genes.gtf")
-# ensembl2sym <- hg38_gtf %>%  
-#   as_tibble() %>%
-#   distinct(gene_name, gene_id) %>% 
-#   dplyr::filter(gene_id %in% rownames(dds))
-# 
-# # check and resolve ambiguous cases
-# ensembl2sym %>%
-#   group_by(gene_name) %>%
-#   filter(length(gene_id) > 1)
-# ensembl2sym %>%
-#   group_by(gene_id) %>%
-#   filter(length(gene_name) > 1)
-# dds <- dds[rownames(dds) != "ENSG00000269226",]
-# ensembl2sym <- ensembl2sym %>% 
-#   dplyr::filter(gene_id != "ENSG00000269226")
-# 
-# # update rownames
-# rownames(dds) <-  ensembl2sym$gene_name[match(rownames(dds), ensembl2sym$gene_id)]
-# 
-# # extract metadata and logcounts
-# metadata_bulk <- colData(dds) %>% 
-#   as.data.frame()
-# logcnts_bulk <- counts(dds, normalized = T)
+saveRDS(expressed_genes_sc, "RDS/expressed_genes.rds")
 
 
 ## Annotate Nanopore transcripts ----------------------------------------

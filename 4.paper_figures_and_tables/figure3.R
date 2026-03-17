@@ -213,7 +213,7 @@ p8
 module_conservation_human <- readRDS(here(wd, "module_conservation_human.rds"))
 
 # plot human subtree length VS human diversity with regression line, prediction interval and diverged modules highlighted
-colors <- c(diverged = "salmon", conserved = "#2B823A", not_significant = "black")
+colors <- c(diverged = "salmon", conserved = "#2B823A", within_expectation = "black")
 p9 <- plotConservedDivergedModules(module_conservation_human, label_size = 3.5) +
   scale_color_manual(values = colors, breaks = "diverged", labels = "diverged on the human lineage") +
   theme(legend.position = "bottom",
@@ -233,15 +233,15 @@ spec_colors <- c("#B3E86B", "#79CBFF", "#DB9DFF")
 
 # select modules of interest
 modules <- c(top5_conserved_modules <- module_conservation_overall %>%
-               dplyr::filter(conservation == "conserved") %>%
+               dplyr::filter(category == "conserved") %>%
                dplyr::slice_min(order_by = residual, n = 5) %>%
                pull(regulator),
              top5_diverged_modules <- module_conservation_overall %>%
-               dplyr::filter(conservation == "diverged") %>%
+               dplyr::filter(category == "diverged") %>%
                dplyr::slice_max(order_by = residual, n = 5) %>%
                pull(regulator),
              module_conservation_human %>%
-               dplyr::filter(conservation == "diverged") %>%
+               dplyr::filter(category == "diverged") %>%
                pull(regulator)) %>% 
   as.character()
 
@@ -298,7 +298,7 @@ p10
 
 # get the 5 most conserved and 5 most diverged modules
 top5_cons_div_modules <- module_conservation_overall %>%
-  dplyr::filter(conservation %in% c("conserved", "diverged")) %>%
+  dplyr::filter(category %in% c("conserved", "diverged")) %>%
   dplyr::arrange(residual) %>%
   dplyr::slice(1:5, (dplyr::n()-4):dplyr::n())
 
@@ -318,13 +318,13 @@ binding_site_vs_network_divergence <- readRDS(here("data/validations/binding_sit
   inner_join(top5_cons_div_modules)
 
 # test whether regulators with diverged modules show higher binding site divergence than regulators with conserved modules (while accounting for the phylogeny)
-fit <- lm(median_delta_score ~ conservation + distance, 
+fit <- lm(median_delta_score ~ category + distance, 
           data = binding_site_vs_network_divergence) ## signif
 summary(fit)
 
 # plot
 p11 <- binding_site_vs_network_divergence %>% 
-  ggplot(aes(x = conservation, y = median_delta_score)) +
+  ggplot(aes(x = category, y = median_delta_score)) +
   geom_beeswarm(aes(color = species_pair), dodge.width = 0.2, size = 1.4, cex = 2) +
   theme_bw(base_size = 14) +
   scale_color_manual(values = c("human VS gorilla" = "cyan3", "human VS cynomolgus" = "royalblue2"), labels =c("human VS\ngorilla", "human VS\ncynomolgus"),  name = "species pair") +

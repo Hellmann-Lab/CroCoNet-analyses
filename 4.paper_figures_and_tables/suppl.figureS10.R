@@ -1,181 +1,201 @@
 here::i_am("scripts/4.paper_figures_and_tables/suppl.figureS10.R")
 
+library(CroCoNet)
 library(tidyverse)
-library(here)
 library(ape)
-library(ggbeeswarm)
+library(ggtree)
 library(patchwork)
+library(RColorBrewer)
+library(cowplot)
+library(here)
 
+wd <- here("data/neural_differentiation_dataset/CroCoNet_analysis/")
+source(here("scripts/4.paper_figures_and_tables/helper_functions.R"))
 fig_dir <- here("data/paper_figures_and_tables/")
 
 
-## Sequence divergence VS network divergence ----------------------------
+## Tree illustrations --------------------------------------------------
 
-# load module conservation ranking
-module_conservation_overall <- readRDS(here("data/neural_differentiation_dataset/CroCoNet_analysis/module_conservation_overall.rds"))
+trees <- readRDS(here(wd, "trees.rds"))
 
-# get phylogenetic distances
-tree <- readRDS("/data/share/htp/hack_GRN/NPC_diff_network_analysis/03.CroCoNet_analysis/RDS/tree.rds")
-phylo_dist <- ape::cophenetic.phylo(tree) %>%
-  as.data.frame() %>%
-  tibble::rownames_to_column("species1") %>%
-  tidyr::pivot_longer(cols = 2:ncol(.), names_to = "species2", values_to = "distance") %>%
-  dplyr::mutate(species1 = factor(species1, c("human", "gorilla", "cynomolgus")),
-                species2 = factor(species2, c("human", "gorilla", "cynomolgus"))) %>% 
-  dplyr::filter(as.integer(species1) < as.integer(species2) & !(species1 == "gorilla" & species2 == "cynomolgus")) %>% 
-  dplyr::transmute(species_pair = paste0(species1, " VS ", species2), distance) 
+tree1 <- trees[["TFAP2C"]]
 
-# amino acid conservation
-aa_cons_per_spec_pair <- readRDS(here("data/validations/sequence_divergence/aa_conservation_regulators.rds")) %>%
-  dplyr::select(regulator = gene_name, aa_cons.gg6, aa_cons.mf6) %>% 
-  inner_join(module_conservation_overall) %>% 
-  dplyr::filter(conservation != "not_significant") %>% 
-  pivot_longer(cols = c("aa_cons.gg6", "aa_cons.mf6"), names_to = "species_pair", values_to = "aa_cons") %>% 
-  dplyr::mutate(species_pair = ifelse(species_pair == "aa_cons.gg6", "human VS gorilla", "human VS cynomolgus")) %>% 
-  inner_join(phylo_dist) %>% 
-  dplyr::mutate(species_pair = factor(species_pair, c("human VS gorilla", "human VS cynomolgus")))
+treeDf1 <- data.frame(branch.length = tree1$edge.length) %>%
+  left_join(as_tibble(tree1) %>%
+              drop_na(branch.length),
+            by = "branch.length",
+            relationship = "many-to-many") %>%
+  distinct() %>%
+  dplyr::mutate(species = case_when(grepl("H", label) ~ "human",
+                                    grepl("G", label) ~ "gorilla",
+                                    grepl("C", label) ~ "cynomolgus",
+                                    T ~ NA),
+                gorilla_diversity = 1:nrow(.) %in% which.edge(tree1, group=tree1$tip.label[grepl("G", tree1$tip.label)]),
+                gorilla_subtree = (1:nrow(.) %in% which.edge(tree1, group=tree1$tip.label[grepl("G", tree1$tip.label)])) | (parent == 14 & node == 16))
 
-# test whether regulators with conserved network modules tend to have higher protein sequence conservation than regulators with diverged network modules
-fit <- lm(aa_cons ~ conservation + distance, 
-          data = aa_cons_per_spec_pair)
-summary(fit)
-
-# plot protein sequence divergence for regulators with conserved and diverged network modules
-p1 <- aa_cons_per_spec_pair %>% 
-  ggplot(aes(x = conservation, y = 1- aa_cons)) +
-  geom_beeswarm(aes(color = species_pair), dodge.width = 0.2, size = 1, cex = 2) +
-  scale_color_manual(values = c("human VS gorilla" = "cyan3", "human VS cynomolgus" = "royalblue2"), labels = c("human VS\ngorilla", "human VS\ncynomolgus"), name = "species pair") +
-  theme_bw(base_size = 14) +
-  theme(axis.title.x = element_blank(),
-        axis.text.x = element_text(size = 13, color = "black"),
-        legend.title = element_text(margin = margin(b = 14)),
-        legend.key.spacing.y = unit(0.4, "cm")) +
-  stat_summary(fun="median", geom="crossbar", linewidth = 0.2, width = 0.25) +
-  ylab("protein sequence divergence") +
-  scale_x_discrete(labels = c("conserved\nnetwork", "diverged\nnetwork"))
-
-aa_cons_per_spec_pair_bee <- ggplot_build(p1)$data[[1]] %>% 
-  dplyr::mutate(aa_cons = 1-y,
-                species_pair = ifelse(colour == "cyan3", "human VS gorilla", "human VS cynomolgus")) %>% 
-  inner_join(aa_cons_per_spec_pair %>% dplyr::filter(regulator %in% c("POU5F1", "NR3C1"))) %>% 
-  group_by(regulator, species_pair) %>% 
-  dplyr::filter(x == min(x[x > 1.5])) %>% 
-  dplyr::transmute(regulator, species_pair, conservation = x, aa_cons = 1 - y)
-
-p1 <- p1 +
-  geom_label_repel(data = aa_cons_per_spec_pair_bee %>%
-                     dplyr::filter(species_pair == "human VS gorilla" & regulator == "POU5F1"),
-                   ggplot2::aes(label = regulator, color = species_pair),
-                   fill = "white", size = 2.2, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, ylim = c(NA, -0.001), xlim = c(NA, 1.75), min.segment.length = 0, show.legend = F) +
-  geom_label_repel(data = aa_cons_per_spec_pair_bee %>%
-                     dplyr::filter(species_pair == "human VS gorilla" & regulator == "NR3C1"),
-                   ggplot2::aes(label = regulator, color = species_pair),
-                   fill = "white", size = 2.2, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, ylim = c(0.008, NA), xlim = c(NA, 1.75), min.segment.length = 0, show.legend = F) +
-  geom_label_repel(data = aa_cons_per_spec_pair_bee %>%
-                     dplyr::filter(species_pair == "human VS cynomolgus"),
-                   ggplot2::aes(label = regulator, color = species_pair),
-                   fill = "white", size = 2.2, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, xlim = c(2.22, NA), min.segment.length = 0, show.legend = F)
+p1 <- ggtree(tree1, layout = "unrooted") %<+%
+  treeDf1 +
+  aes(color = gorilla_diversity, size = gorilla_diversity) +
+  scale_color_manual(values = c("black", "#2292c4"), guide = "none") +
+  scale_size_manual(values = c(0.2, 2), guide = "none") +
+  geom_tippoint(ggplot2::aes(fill = .data[["species"]]), shape = 21, size = 8, color = "transparent") +
+  scale_fill_manual(values = c("#d4e9b1", "#B7DFFF", "#E8C5FF"), breaks = c("human", "gorilla", "cynomolgus"), guide = "none")+
+  scale_x_continuous(expand = expansion(mult = c(0.2, 0.2))) +
+  scale_y_continuous(expand = expansion(mult = c(0.2, 0.2)))
 p1
 
-## Expression pattern divergence VS network divergence ----------------------------
-
-# expression divergence (measured as the LFC for the gorilla_human or cynomolgus_human contrast - corresponds to the LFC difference between the gorilla-human or cynomolgus-human species pairs)
-expr_div_per_spec_pair <- readRDS(here("data/validations/expression_pattern_divergence/expression_pattern_divergence.rds")) %>% 
-  pivot_longer(cols = c("expression_pattern_divergence_human_gorilla", "expression_pattern_divergence_human_cynomolgus"), names_to = "species_pair", values_to = "expression_pattern_divergence") %>% 
-  dplyr::mutate(species_pair = ifelse(species_pair == "expression_pattern_divergence_human_gorilla", "human VS gorilla", "human VS cynomolgus")) %>% 
-  inner_join(module_conservation_overall) %>% 
-  dplyr::filter(conservation != "not_significant") %>%
-  inner_join(phylo_dist) %>% 
-  dplyr::mutate(species_pair = factor(species_pair, c("human VS gorilla", "human VS cynomolgus")))
-
-# test whether regulators with conserved network modules tend to have higher protein sequence conservation than regulators with diverged network modules
-fit <- lm(expression_pattern_divergence ~ conservation + distance, 
-          data = expr_div_per_spec_pair)
-summary(fit)
-
-# plot expression pattern divergence for regulators with conserved and diverged network modules
-p2 <- expr_div_per_spec_pair %>% 
-  ggplot(aes(x = conservation, y = expression_pattern_divergence)) +
-  geom_beeswarm(aes(color = species_pair), dodge.width = 0.2, size = 1, cex = 2) +
-  scale_color_manual(values = c("human VS gorilla" = "cyan3", "human VS cynomolgus" = "royalblue2"), labels = c("human VS\ngorilla", "human VS\ncynomolgus"), name = "species pair") +
-  theme_bw(base_size = 14) +
-  theme(axis.title.x = element_blank(),
-        axis.text.x = element_text(size = 13, color = "black"),
-        legend.title = element_text(margin = margin(b = 14)),
-        legend.key.spacing.y = unit(0.4, "cm")) +
-  stat_summary(fun="mean", geom="crossbar", linewidth = 0.2, width = 0.25) +
-  ylab("expression pattern divergence")+
-  scale_x_discrete(labels = c("conserved\nnetwork", "diverged\nnetwork")) 
-
-expr_div_per_spec_pair_bee <- ggplot_build(p2)$data[[1]] %>% 
-  dplyr::mutate(expression_pattern_divergence = y,
-                species_pair = ifelse(colour == "cyan3", "human VS gorilla", "human VS cynomolgus")) %>% 
-  inner_join(expr_div_per_spec_pair %>% dplyr::filter(regulator %in% c("POU5F1", "NR3C1"))) %>% 
-  dplyr::transmute(regulator, species_pair, conservation = x, expression_pattern_divergence)
-
-p2 <- p2 +
-  geom_label_repel(data = expr_div_per_spec_pair_bee %>%
-                     dplyr::filter(species_pair == "human VS gorilla"),
-                   ggplot2::aes(label = regulator, color = species_pair),
-                   fill = "white", size = 2.2, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, xlim = c(NA, 1.85), min.segment.length = 0, show.legend = F) +
-  geom_label_repel(data = expr_div_per_spec_pair_bee %>%
-                     dplyr::filter(species_pair == "human VS cynomolgus"),
-                   ggplot2::aes(label = regulator, color = species_pair),
-                   fill = "white", size = 2.2, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, xlim = c(2.15, NA), min.segment.length = 0, show.legend = F)
+p2 <- ggtree(tree1, layout = "unrooted") %<+%
+  treeDf1 +
+  aes(color = gorilla_subtree, size = gorilla_subtree) +
+  scale_alpha(guide = "none") +
+  scale_color_manual(values = c("black", "#034681"), guide = "none") +
+  scale_size_manual(values = c(0.2, 2), guide = "none") +
+  geom_tippoint(ggplot2::aes(fill = .data[["species"]]), shape = 21, size = 8, color = "transparent") +
+  scale_fill_manual(values = c("#d4e9b1", "#B7DFFF", "#E8C5FF"), breaks = c("human", "gorilla", "cynomolgus"), guide = "none")+
+  scale_x_continuous(expand = expansion(mult = c(0.2, 0.2))) +
+  scale_y_continuous(expand = expansion(mult = c(0.2, 0.2)))
 p2
 
 
-## Binding site divergence VS network divergence ----------------------------
+## Conservation ranking --------------------------------------------------
 
-# add info about module conservation
-binding_site_vs_network_divergence <- readRDS(here("data/validations/binding_site_enrichment_and_divergence/binding_site_divergence_per_module.rds")) %>% 
-  inner_join(module_conservation_overall) %>% 
-  dplyr::filter(conservation != "not_significant") %>% 
-  # get rid of redundancy
-  dplyr::mutate(species_pair = paste0(species1, " VS ", species2)) %>% 
-  dplyr::filter(species_pair != "gorilla VS cynomolgus") %>% 
-  inner_join(phylo_dist) %>% 
-  ungroup() %>% 
-  dplyr::mutate(species_pair = factor(species_pair, c("human VS gorilla", "human VS cynomolgus")))
-
-# test whether regulators with diverged modules show higher binding site divergence than regulators with conserved modules (while accounting for the phylogeny)
-fit <- lm(median_delta_score ~ conservation + distance, 
-          data = binding_site_vs_network_divergence)
-summary(fit) 
-
-# plot
-p3 <- binding_site_vs_network_divergence %>% 
-  ggplot(aes(x = conservation, y = median_delta_score)) +
-  geom_beeswarm(aes(color = species_pair), dodge.width = 0.2, size = 1, cex = 2) +
-  theme_bw(base_size = 14) +
-  scale_color_manual(values = c("human VS gorilla" = "cyan3", "human VS cynomolgus" = "royalblue2"), labels =c("human VS\ngorilla", "human VS\ncynomolgus"),  name = "species pair") +
-  theme(axis.title.x = element_blank(),
-        axis.text.x = element_text(size = 13, color = "black"),
-        legend.title = element_text(margin = margin(b = 14)),
-        legend.key.spacing.y = unit(0.4, "cm")) +
-  ylab("binding site divergence") +
-  scale_x_discrete(labels = c("conserved\nnetwork", "diverged\nnetwork")) +
-  stat_summary(fun="mean", geom="crossbar", linewidth = 0.2, width = 0.25)
-
-binding_site_vs_network_divergence_bee <- ggplot_build(p3)$data[[1]] %>% 
-  dplyr::mutate(median_delta_score = y,
-                species_pair = ifelse(colour == "cyan3", "human VS gorilla", "human VS cynomolgus")) %>% 
-  inner_join(binding_site_vs_network_divergence %>% dplyr::filter(regulator %in% c("POU5F1", "NR3C1"))) %>% 
-  dplyr::transmute(regulator, species_pair, conservation = x, median_delta_score)
-
-p3 <- p3 +
-  geom_label_repel(data = binding_site_vs_network_divergence_bee %>%
-                     dplyr::filter(species_pair == "human VS gorilla"),
-                   ggplot2::aes(label = regulator, color = species_pair),
-                   fill = "white", size = 2.2, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, xlim = c(NA, 1.9), min.segment.length = 0, show.legend = F) +
-  geom_label_repel(data = binding_site_vs_network_divergence_bee %>%
-                     dplyr::filter(species_pair == "human VS cynomolgus"),
-                   ggplot2::aes(label = regulator, color = species_pair),
-                   fill = "white", size = 2.2, label.size = 0.08, segment.size = 0.08, box.padding = 0.05, label.padding = 0.05, xlim = c(2.1, NA), min.segment.length = 0, show.legend = F)
+module_conservation_gorilla <- readRDS(here(wd, "module_conservation_gorilla.rds"))
+colors <- c(diverged = "salmon", within_expectation = "black")
+p3 <- plotConservedDivergedModules(module_conservation_gorilla, label_size = 5, font_size = 20) +
+  scale_color_manual(values = colors, breaks = "diverged", labels = "diverged\non the\ngorilla\nlineage") +
+  theme(legend.margin=margin(5.5, 5.5, 5.5, -10),
+        plot.margin = margin(5.5, 20, 5.5, 5.5),
+        legend.justification = "left")
 p3
 
+## Distance matrices of the most diverged modules ------------------------
 
-## Combine -------------------------------------------------------------------
+gorilla_diverged_modules <- module_conservation_gorilla %>%
+  dplyr::filter(category == "diverged") %>%
+  slice_max(order_by = residual, n = 2) %>% 
+  pull(regulator) %>% 
+  as.character()
 
-p1 + p2 + p3 + plot_layout(guides = "collect")
-ggsave(here(fig_dir, "figureS10.png"), width = 11.5, height = 3.9)
+dist <- readRDS(here(wd, "dist.rds"))
+
+dist[gorilla_diverged_modules] %>% 
+  bind_rows() %>% 
+  pull(dist) %>% 
+  range()
+
+gorilla_dist_mat_plots <- lapply(gorilla_diverged_modules, function(mod) {
+  
+  no_legend(plotDistMatsAdjusted(dist[[mod]], 0.68, text_size = "medium")) +
+    labs(title = mod,
+         subtitle = "(diverged on the\ngorilla lineage)") +
+    theme(plot.title = element_text(hjust = 0.5, margin = margin(5.5, 5.5, 2, 5.5)),
+          plot.subtitle = element_text(hjust = 0.5, size = 17, margin = margin(2, 5.5, 15, 5.5)))
+  
+})
+
+gorilla_dist_mat_legend <- get_legend(plotDistMatsAdjusted(dist[[gorilla_diverged_modules[1]]], 0.68, text_size = "medium") +
+                                       theme(legend.margin = margin(5.5, 5.5, 5.5, 30), 
+                                             legend.text = element_text(size = 17*0.8),
+                                             legend.title = element_text(margin = margin(5.5, 5.5, 8, 0), size = 17)))
+
+gorilla_dist_mat_plots_with_legend <- c(gorilla_dist_mat_plots, list(gorilla_dist_mat_legend))
+
+plot_grid(plotlist = gorilla_dist_mat_plots_with_legend, ncol = 3, align = "hv", axis = "tblr")
+
+
+## Tree representations of the most diverged modules ---------------------
+
+spec_colors <- c("#c1df91", "#9BD5FF", "#E1B1FF")
+
+gorilla_tree_plots <- plotTreesAdjusted(trees[gorilla_diverged_modules], species_colors = spec_colors, tip_size = 4.3, font_size = 12, rev_x = "GLI2", rev_y = "GLI2", coord_flip = c("CEBPB", "GLI2")) %>% 
+  lapply(no_legend)
+
+gorilla_tree_legend <- get_legend(plotTreesAdjusted(trees[[gorilla_diverged_modules[1]]], species_colors = spec_colors, tip_size = 4.3, font_size = 10) + 
+                                     theme(legend.title = element_text(size = 17, margin = margin(5.5, 5.5, 10, 0)), 
+                                           legend.text = element_text(size = 17*0.8), 
+                                           legend.key.spacing.y = unit(0.15, "cm"),
+                                           legend.margin = margin(5.5, 5.5, 5.5, 30)))
+
+gorilla_tree_plots_with_legend <- c(gorilla_tree_plots, list(gorilla_tree_legend))
+
+plot_grid(plotlist = gorilla_tree_plots_with_legend, ncol = 3, align = "hv", axis = "tblr")
+
+
+## Network plots of the most diverged modules ----------------------------------------------
+
+pruned_modules <- readRDS(here(wd, "pruned_modules.rds"))
+
+consensus_network <- readRDS(here(wd, "consensus_network.rds"))
+
+network_list <- readRDS(here(wd, "network_list.rds"))
+
+replicate2species <- readRDS(here("data/neural_differentiation_dataset/processed_data/replicate2species.rds"))
+
+gorilla_network_plots <- lapply(gorilla_diverged_modules, function(mod) {
+  
+  plotNetworks(mod,
+               pruned_modules,
+               consensus_network,
+               network_list,
+               replicate2species,
+               N = 300,
+               ncol = 3,
+               font_size = 16) +
+    guides(edge_width = "none") +
+    theme(plot.margin = margin(0, 0, 0, 0)) %>% 
+    no_legend()
+  
+})
+
+gorilla_network_legend <- get_legend(plotNetworks(gorilla_diverged_modules[1],
+                                                  pruned_modules,
+                                                  consensus_network,
+                                                  network_list,
+                                                  replicate2species,
+                                                  N = 300,
+                                                  ncol = 3,
+                                                  font_size = 14) +
+                                        guides(edge_width = "none") +
+                                        theme(plot.margin = margin(0, 0, 0, 0),
+                                              legend.text = ggplot2::element_text(size = 0.8*17),
+                                              legend.title = ggplot2::element_text(size = 17),
+                                              legend.justification = "left",
+                                              legend.margin = margin(5.5, 5.5, 5.5, 30)))
+
+gorilla_network_plots_with_legend <- c(gorilla_network_plots, list(gorilla_network_legend))
+
+
+## Combine plots --------------------------------------------------------
+
+left_side <- wrap_plots(p1, p2, plot_spacer(), p3, design = "ab
+                        cc
+                        dd", heights = c(0.8, 0.1, 2))
+
+plot_list <- c(gorilla_dist_mat_plots_with_legend,
+               gorilla_tree_plots_with_legend,
+               gorilla_network_plots_with_legend)
+
+right_side <- plot_grid(plotlist = plot_list, ncol = 3, rel_heights = c(1.5, 1, 0.8), rel_widths = c(1, 1, 0.5)) +
+  theme(plot.background = element_rect(fill = "white", colour = NA))
+right_side
+
+set.seed(4)
+plot_grid(left_side, right_side, ncol = 2, rel_widths = c(1, 1))
+ggsave(here(fig_dir, 'suppl.figureS10.png'), width = 20.5, height = 10, dpi = 600)
+# ggsave('figures/figureS9.pdf', width = 20.5, height = 20, dpi = 600)
+
+
+## Small trees ----------------------------------------------------------
+
+gorilla_diverged_modules_top5 <- module_conservation_gorilla %>%
+  dplyr::filter(category == "diverged") %>%
+  slice_max(order_by = residual, n = 5) %>% 
+  pull(regulator) %>% 
+  as.character()
+
+spec_colors <- setNames(c("#B3E86B", "#79CBFF", "#DB9DFF"),
+                          c("human", "gorilla", "cynomolgus"))
+
+plotSmallTrees(trees[gorilla_diverged_modules_top5], species_colors = spec_colors, ncol = 5)
+ggsave(here(fig_dir, "suppl.figureS9_small_trees.pdf"), width = 15.5, height = 5)
+

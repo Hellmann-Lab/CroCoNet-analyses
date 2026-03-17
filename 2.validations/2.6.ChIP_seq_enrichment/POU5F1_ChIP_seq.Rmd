@@ -1,0 +1,291 @@
+---
+title: "Processing the POU5F1 ChIP-seq data from Ji et al. 2016"
+output: html_document
+date: "2025-03-06"
+editor_options: 
+  chunk_output_type: console
+---
+
+# Data download
+
+```{sh download}
+pd=/your/project/directory/
+wd=$pd/data/validations/POU5F1_ChIP_seq
+mkdir -p $wd/fastq
+mkdir -p $wd/logs
+cd $wd/fastq
+
+for srr in SRR2056020 SRR2056023 SRR2056024; do
+
+  sbatch \
+    --job-name=download_${srr} \
+    --output=$wd/logs/download_${srr}_%j.out \
+    --error=$wd/logs/download_${srr}_%j.err \
+    -c 8 \
+    --mem=16G \
+    --wrap="fasterq-dump \
+      --split-files \
+      --threads 8 \
+      --outdir $wd/fastq \
+      $srr"
+
+done
+```
+
+```{sh rename}
+cat > rename_map.txt <<'EOF'
+SRR2056023	POU5F1_ChIP_H1_hESCS_repl1
+SRR2056024	POU5F1_ChIP_H1_hESCS_repl2
+SRR2056020	input_H1_hESCs
+EOF
+
+while read old new; do
+  mv "${old}.fastq" "${new}.fastq"
+done < rename_map.txt
+```
+
+```{sh compress}
+for f in *.fastq; do
+  sample=${f%.fastq}
+
+  sbatch \
+    --job-name=compress_${sample} \
+    --output=$wd/logs/compress_${sample}_%j.out \
+    --error=$wd/logs/compress_${sample}_%j.err \
+    -c 8 \
+    --mem=4G \
+    --wrap="pigz -p 8 $f"
+done
+```
+
+```{sh qc}
+mkdir -p $wd/fastq/fastqc
+for f in *.fastq.gz; do
+  sample=${f%.fastq.gz}
+
+  sbatch \
+    --job-name=fastqc_${sample} \
+    --output=$wd/logs/fastqc_${sample}_%j.out \
+    --error=$wd/logs/fastqc_${sample}_%j.err \
+    -c 4 \
+    --mem=4G \
+    --wrap="fastqc -o $wd/fastq/fastqc $f"
+done
+```
+
+```{sh trim}
+mkdir -p $wd/trimmed_fastq
+
+for f in *.fastq.gz; do
+  sample=${f%.fastq.gz}
+  sbatch \
+    --output=$wd/logs/trimming_${sample}_%j.out \
+    --error=$wd/logs/trimming_${sample}_%j.err \
+    --job-name=trimming_${f%.fastq.gz} \
+    -c 20 \
+    --mem=12G \
+    --wrap="cutadapt -j 20 \
+      -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCA \
+      -o $wd/trimmed_fastq/${f%.fastq.gz}_trimmed.fastq.gz \
+      $f"
+done
+```
+
+# Bowtie alignment
+
+```{sh bowtie2_index}
+mkdir -p $wd/mapping
+mkdir -p $wd/mapping/index
+sbatch --job-name=bowtie_index_genome_hg38 --wrap="bowtie-build $pd/data/neural_differentiation_dataset/genomes/hg38/genome.fa hg38"
+```
+
+```{sh map}
+index=$wd/mapping/index/hg38
+
+for fq in $wd/trimmed_fastq/*.fastq.gz; do
+  sample=$(basename "$fq" .fastq.gz | sed 's/_trimmed$//')
+
+  sbatch \
+    --job-name=bowtie_${sample} \
+    --output=$wd/logs/bowtie_${sample}_%j.out \
+    --error=$wd/logs/bowtie_${sample}_%j.err \
+    -c 16 \
+    --mem=16G \
+    --wrap="
+      # align + coordinate sort
+      bowtie \
+        -k 1 \
+        -m 1 \
+        -n 2 \
+        $index \
+        $fq \
+      | samtools view -@ 4 -bS - \
+      | samtools sort -@ 4 \
+          -o $wd/mapping/${sample}.sorted.bam
+      
+      # name-sort
+      samtools sort \
+        -n -@ 4 \
+        -o $wd/mapping/${sample}_nameSorted.bam \
+        $wd/mapping/${sample}.sorted.bam
+    "
+done
+```
+
+
+# Genrich peak calling
+
+```{sh get_blacklist}
+mkdir -p $wd/peaks
+cd $wd/peaks
+wget https://www.encodeproject.org/files/ENCFF356LFX/@@download/ENCFF356LFX.bed.gz
+gzip -d ENCFF356LFX.bed.gz
+```
+
+```{sh call_peaks}
+genrich=$pd/Genrich/Genrich
+
+sbatch \
+  --job-name=genrich_POU5F1 \
+  --output=$wd/logs/genrich_POU5F1_%j.out \
+  --error=$wd/logs/genrich_POU5F1_%j.err \
+  -c 8 \
+  --mem=16G \
+  --wrap="
+    $genrich \
+      -t $wd/mapping/POU5F1_ChIP_H1_hESCS_repl1_nameSorted.bam,$wd/mapping/POU5F1_ChIP_H1_hESCS_repl2_nameSorted.bam \
+      -c $wd/mapping/input_H1_hESCs_nameSorted.bam \
+      -o $wd/peaks/POU5F1_ChIP_H1_hESCs_peaks_BL.narrowPeak \
+      -E $wd/peaks/ENCFF356LFX.bed \
+      -v \
+      -y \
+      -q 0.05 \
+      -e MT,Y
+  "
+cp $wd/peaks/POU5F1_ChIP_H1_hESCs_peaks_BL.narrowPeak $pd/data/validations/ChIP_seq/
+```
+
+# QC
+
+```{sh frip}
+mkdir -p $wd/peak_qc
+
+sbatch \
+  --job-name=frip_POU5F1 \
+  --output=$wd/logs/frip_POU5F1_%j.out \
+  --error=$wd/logs/frip_POU5F1_%j.err \
+  --mem=4G \
+  --wrap="
+
+    peaks=$wd/peaks/POU5F1_ChIP_H1_hESCs_peaks_BL.narrowPeak
+    outfile==$wd/peak_qc/POU5F1_ChIP_H1_hESCs_FRiP.tsv
+
+    echo -e \"replicate\tmapped_reads\treads_in_peaks\tFRiP\" > \$outfile
+
+    for repl in repl1 repl2; do
+      bam=$wd/mapping/POU5F1_ChIP_H1_hESCS_\${repl}.sorted.bam
+
+      mapped=\$(samtools view -c -F 4 \$bam)
+      inpeaks=\$(bedtools intersect -u -abam \$bam -b \$peaks | samtools view -c)
+
+      frip=\$(awk -v a=\$inpeaks -v b=\$mapped 'BEGIN{printf \"%.6f\", a/b}')
+
+      echo -e \"\$repl\t\$mapped\t\$inpeaks\t\$frip\" >> \$outfile
+    done
+    column -t \$outfile
+  "
+```
+
+```{r load_libraries}
+library(tidyverse)
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+library(ChIPseeker)
+library(plyranges)
+library(ggsignif)
+library(rtracklayer)
+library(here)
+
+here::i_am("scripts/2.validations/2.6.ChIP_seq/POU5F1_ChIP_seq.Rmd")
+wd <- here("data/validations/ChIP_seq_enrichment")
+fig_dir <- here(wd, "figures")
+dir.create(fig_dir)
+```
+
+```{r tss_enrichment}
+chip_peaks <- read_narrowpeaks(here(wd, "POU5F1_ChIP_H1_hESCs_peaks_BL.narrowPeak")) %>% 
+  filter(!seqnames %in% c("chrM", "chrY"))
+seqlevelsStyle(chip_peaks)
+nrow(as_tibble(chip_peaks))
+
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+promoter <- getPromoters(TxDb = txdb, upstream = 3000, downstream = 3000)
+tagMatrix <- getTagMatrix(chip_peaks, windows = promoter)
+ChIPseeker::tagHeatmap(tagMatrix)
+ggsave(here("data/validations/NANOG_ChIP_seq/peak_qc/tss_enrichment_heatmap.png"), width = 5, height = 4)
+
+plotAvgProf2(chip_peaks, TxDb=txdb, upstream=3000, downstream=3000,
+             xlab="Genomic Region (5'->3')", ylab = "Read Count Frequency", conf = 0.95, resample = 1000)
+ggsave(here("data/validations/NANOG_ChIP_seq/peak_qc/tss_enrichment_avg_profile.png"), width = 5, height = 4)
+```
+
+# Module enrichment
+
+```{r atac_peaks_module_genes}
+# all genes in network
+all_genes <- readRDS(here("data/neural_differentiation_dataset/processed_data/genes.rds"))
+
+# POU5F1 module members
+POU5F1_mod_genes <- readRDS(here("data/neural_differentiation_dataset/CroCoNet_analysis/pruned_modules.rds")) %>% 
+  dplyr::filter(regulator == "POU5F1") %>% 
+  pull(target) 
+
+# load human iPSC ATAC-seq data
+atac_peaks <- readRDS(here("data/validations/ATAC_seq_peak_to_gene_associations/human_peak2gene_associations.rds")) %>% 
+  dplyr::filter(origin != "unique_npc" & gene_name %in% all_genes) %>% 
+  dplyr::transmute(seqnames, start = start.ipsc, end = end.ipsc, name = name.ipsc, gene_name, in_module = gene_name %in% POU5F1_mod_genes) %>% 
+  as_granges()
+```
+
+```{r overlaps}
+overlaps <- join_overlap_left(atac_peaks, chip_peaks) %>% 
+  as_tibble() %>% 
+  group_by(gene_name, in_module) %>% 
+  dplyr::summarise(overlap_chipseq = sum(!is.na(name.y)) > 0) %>% 
+  ungroup() %>% 
+  dplyr::count(in_module, overlap_chipseq) %>% 
+  dplyr::mutate(in_module = ifelse(in_module, "yes", "no"),
+                overlap_chipseq = ifelse(overlap_chipseq, "yes", "no")) 
+saveRDS(overlaps, here(wd, "POU5F1_ChIP_module_overlaps_hPSCs.rds"))
+
+table <- overlaps %>% 
+  pivot_wider(names_from = "in_module", values_from = "n") %>% 
+  column_to_rownames("overlap_chipseq") %>% 
+  as.matrix()
+table
+
+fisher_test_result <- fisher.test(table)
+fisher_test_result
+```
+
+```{r plot_overlaps}
+annot <- case_when(fisher_test_result$p.value < 0.001 ~ "***",
+                   fisher_test_result$p.value < 0.01 ~ "**",
+                   fisher_test_result$p.value < 0.05 ~ "*",
+                   T ~ "n.s.")
+overlaps %>% 
+  group_by(in_module) %>% 
+  dplyr::mutate(frac = n / sum(n)) %>% 
+  dplyr::filter(overlap_chipseq == "yes") %>% 
+  dplyr::mutate(in_module = factor(ifelse(in_module == "yes", "POU5F1\nmodule", "other"), c("other", "POU5F1\nmodule"))) %>% 
+  ggplot(aes(y = in_module, x = frac, fill = in_module)) +
+  geom_bar(stat = "identity", position = "stack") +
+  theme_bw(base_size = 14) +
+  xlab("fraction of genes with associated\nPOU5F1 ChIP-seq peak(s)") +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 14, color = "black"),
+        plot.margin = margin(5.5, 30, 5.5, 5.5)) +
+  scale_fill_manual(values = c("grey60", "#08635C"), guide = "none") +
+  geom_signif(comparisons = list(c("POU5F1\nmodule", "other")), annotations = annot, vjust = 0.4, size = 0.3) +
+  scale_x_continuous(expand = expansion(mult = c(0.05, 0.08)))
+ggsave(here(fig_dir, "POU5F1_ChIP_module_overlaps_hPSCs.png"), width = 5, height = 3)
+```

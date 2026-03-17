@@ -172,7 +172,7 @@ p4 <- random_vs_actual_pres %>%
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(color = "black", size = 14, face = "italic")) +
   ylab(expression(Delta * ~preservation~score[~actual - random])) +
-  geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
+  geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), test.args = list(paired = TRUE), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
 p4
 
@@ -208,7 +208,7 @@ p5 <- pres_stats_to_plot %>%
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(color = "black", size = 14, face = "italic")) +
   ylab(expression(-italic(r)[preservation~score * ", " * phylogenetic~distance])) +
-  geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
+  geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), test.args = list(paired = TRUE), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
 p5
 
@@ -225,7 +225,7 @@ p6 <- bind_rows(cor_kIM = tree_stats,
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(color = "black", size = 14, face = "italic")) +
   ylab(expression(frac("total tree length", "within-species diversity"))) +
-  geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
+  geom_signif(comparisons = list(c("cor.kIM", "cor.adj")), test.args = list(paired = TRUE), map_signif_level = c("***"=0.001, "**"=0.01, "*"=0.05, "n.s." =1), textsize = 4, tip_length = 0.01, size = 0.3, vjust = 0.3)  +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08)))
 p6
 

@@ -14,9 +14,9 @@ knitr::opts_chunk$set(
 
 This repository contains the code to reproduce all analyses in the following manuscript:
 
-#### [**CroCoNet: a novel framework for cross-species network analysis reveals POU5F1 (OCT4) rewiring**](https://www.biorxiv.org/content/10.1101/2025.11.18.689002v1) 
+#### [**CroCoNet: a framework for the quantitative comparison of gene regulatoy networks across species**](https://www.biorxiv.org/content/10.1101/2025.11.18.689002v1) 
 
-by Anita Térmeg, Johanna Geuder, Vladyslav Storozhuk, Zane Kliesmete, Fiona C. Edenhofer, Beate Vieth, Philipp Janssen, Ines Hellmann
+by Anita Térmeg, Vladyslav Storozhuk, Zane Kliesmete, Fiona C. Edenhofer, Johanna Geuder, Tamina Dietl, Beate Vieth, Philipp Janssen, Boyan Bonev, Ines Hellmann
 
 # <img src="pipeline.png" align="center" width="1000" />
 
@@ -28,7 +28,6 @@ The raw data necessary to reproduce these analyses can be found on ArrayExpress 
 |--------------|-------------------------------------------------|
 | [E-MTAB-15695](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15695) | scRNA-seq data  |
 | [E-MTAB-13373](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-13373) & [E-MTAB-15654](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15654) | ATAC-seq data |
-| [GSE298717](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE298717) (currently private) | single-cell CRISPRi data |
 
 Processed data files have been deposited to Zenodo:
 
@@ -66,7 +65,10 @@ The main example data throughout the paper is a scRNA-seq dataset obtained durin
 * [Prepare input for GRNBoost2](1.neural_differentiation_dataset/1.2.network_inference/1.2.1.prepare_data.R)
 * [Create GRNBoost2 conda environment](1.neural_differentiation_dataset/1.2.network_inference/1.2.2.create_GRNBoost2_env.sh)
 * [Infer networks per replicate using GRNBoost2](1.neural_differentiation_dataset/1.2.network_inference/1.2.3.run_GRNBoost2.sh)
-    * [Network inference worker script](1.neural_differentiation_dataset/1.2.network_inference/arboreto_with_multiprocessing.py)
+    * [GRNBoost2 network inference worker script](1.neural_differentiation_dataset/1.2.network_inference/arboreto_with_multiprocessing.py)
+* [Prepare input for Spearman's correlation](1.neural_differentiation_dataset/1.2.network_inference/1.2.4.prepare_data_for_Spearman.R)
+* [Infer networks per replicate using Spearman's correlation](1.neural_differentiation_dataset/1.2.network_inference/1.2.5.run_correlatePairs.sh)
+    * [Spearman's correlation network inference worker script](1.neural_differentiation_dataset/1.2.network_inference/correlatePairs.R)
 </details>
 <p style="margin: 0.25em 0 0.2em 0.3em;"><em>Start here to skip computationally intensive steps and jump to core analysis</em></p>
 <details>
@@ -76,6 +78,7 @@ The main example data throughout the paper is a scRNA-seq dataset obtained durin
 * [Compare results between the dynamic and top50 pruning approaches](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.3.dynamic_VS_top50_pruning.R)
 * [CroCoNet analysis using cor.adj preservation scores](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.4.CroCoNet_analysis_with_cor_adj.R)
 * [Compare results between the cor.kIM and cor.adj preservation scores](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.5.cor_kIM_VS_cor_adj.R)
+* [CroCoNet analysis based on Spearman networks](1.neural_differentiation_dataset/1.3.CroCoNet_analysis/1.3.6.CroCoNet_analysis_on_Spearman_networks.R)
 </details>
 
 ### 2. Validations
@@ -135,18 +138,10 @@ To validate the results of the CroCoNet analysis on the neural differentiation d
 * [Test and plot association between expression pattern divergence and network divergence](2.validations/2.5.expression_pattern_divergence/2.5.2.expression_pattern_divergence_VS_network_divergence.R)
 </details>
 <details>
-<summary><strong>Analysis of POU5F1 ChIP-seq data</strong></summary>
-* [Download FASTQ files of the ChIP_seq data](2.validations/2.6.POU5F1_ChIP_seq/2.6.1.download_FASTQ.sh)
-* [Create bowtie indices](2.validations/2.6.POU5F1_ChIP_seq/2.6.2.create_bowtie_index.sh)
-* [Map ChIP-seq reads using bowtie](2.validations/2.6.POU5F1_ChIP_seq/2.6.3.mapping.sh)
-* [Name-sort BAM files](2.validations/2.6.POU5F1_ChIP_seq/2.6.4.name_sorting.sh)
-* [Call peaks using Genrich](2.validations/2.6.POU5F1_ChIP_seq/2.6.5.peak_calling.sh)
-* [Calculate ChIP-seq coverage](2.validations/2.6.POU5F1_ChIP_seq/2.6.6.get_coverage.sh)
-* [Check enrichment around transcriptional start sites](2.validations/2.6.POU5F1_ChIP_seq/2.6.7.check_TSS_enrichment.R)
-
-<p style="margin: -1em 0 0em 2em;"><em>Start here to skip computationally intensive steps and jump to core analysis</em></p>
-
-* [Calculate POU5F1 ChIP-seq enrichment near POU5F1 module members](2.validations/2.6.8.calculate_enrichment_near_POU5F1_module_members.R)
+<summary><strong>Enrichment of the regulator's ChIP-seq peaks near module genes</strong></summary>
+* [POU5F1 ChIP-seq analysis](2.validations/2.6.ChIP_seq_enrichment/POU5F1_ChIP_seq.Rmd)
+* [NANOG ChIP-seq analysis](2.validations/2.6.ChIP_seq_enrichment/NANOG_ChIP_seq.Rmd)
+* [PAX6 ChIP-seq analysis](2.validations/2.6.ChIP_seq_enrichment/PAX6_ChIP_seq.Rmd)
 </details>
 <details>
 <summary><strong>Enrichment of LTR7 elements near POU5F1 module members</strong></summary>
@@ -219,7 +214,9 @@ This directory contains all scripts required to reproduce the figures and tables
 * [Supplementary Figure S8](4.paper_figures_and_tables/suppl.figureS8.R)
 * [Supplementary Figure S9](4.paper_figures_and_tables/suppl.figureS9.R)
 * [Supplementary Figure S10](4.paper_figures_and_tables/suppl.figureS10.R)
-* [Supplementary Figure S10](4.paper_figures_and_tables/suppl.figureS10.R)
+* [Supplementary Figure S11](4.paper_figures_and_tables/suppl.figureS11.R)
+* [Supplementary Figure S12-S13](4.paper_figures_and_tables/suppl.figureS12_13.R)
+* [Supplementary Figure S14](4.paper_figures_and_tables/suppl.figureS14.R)
 </details>
 <details>
 <summary><strong>Supplementary tables</strong></summary>

@@ -144,15 +144,15 @@ tree_stats <- summarizeJackknifeStats(tree_stats_jk, c("total_tree_length", "wit
 
 # network conservation - overall
 module_conservation_overall <- readRDS(here("data/neural_differentiation_dataset/CroCoNet_analysis/module_conservation_overall.rds")) %>% 
-  dplyr::transmute(regulator, residual_overall = residual, category_overall = conservation)
+  dplyr::transmute(regulator, residual_overall = residual, studentized_residual_overall = studentized_residual, fdr_overall = fdr, category_overall = category, robust_overall = robust)
 
 # network conservation - human lineage
 module_conservation_human <- readRDS(here("data/neural_differentiation_dataset/CroCoNet_analysis/module_conservation_human.rds")) %>% 
-  dplyr::transmute(regulator, human_monophyleticity = TRUE, human_subtree_length, residual_human = residual, category_human = conservation)
+  dplyr::transmute(regulator, human_monophyleticity = TRUE, human_subtree_length, residual_human = residual, studentized_residual_human = studentized_residual, fdr_human = fdr, category_human = category, robust_human = robust)
 
 # network conservation - gorilla lineage
 module_conservation_gorilla <- readRDS(here("data/neural_differentiation_dataset/CroCoNet_analysis/module_conservation_gorilla.rds")) %>% 
-  dplyr::transmute(regulator, gorilla_monophyleticity = TRUE, gorilla_subtree_length, residual_gorilla = residual, category_gorilla = conservation)
+  dplyr::transmute(regulator, gorilla_monophyleticity = TRUE, gorilla_subtree_length, residual_gorilla = residual, studentized_residual_gorilla = studentized_residual, fdr_gorilla = fdr, category_gorilla = category, robust_gorilla = robust)
 
 # combine
 module_properties_diff_data <- data.frame(regulator = regulators) %>% 
@@ -212,23 +212,23 @@ tree_stats_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/tree
 
 # network conservation - overall
 module_conservation_overall_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/module_conservation_overall.rds")) %>% 
-  dplyr::transmute(regulator, residual_overall = residual, category_overall = conservation)
+  dplyr::transmute(regulator, residual_overall = residual, studentized_residual_overall = studentized_residual, fdr_overall = fdr, category_overall = category, robust_overall = robust)
 
 # network conservation - human lineage
 module_conservation_human_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/module_conservation_human.rds")) %>% 
-  dplyr::transmute(regulator, human_monophyleticity = TRUE, human_subtree_length, residual_human = residual, category_human = conservation)
+  dplyr::transmute(regulator, human_monophyleticity = TRUE, human_subtree_length, residual_human = residual, studentized_residual_human = studentized_residual, fdr_human = fdr, category_human = category, robust_human = robust)
 
 # network conservation - chimp lineage
 module_conservation_chimp_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/module_conservation_chimp.rds")) %>% 
-  dplyr::transmute(regulator, chimp_monophyleticity = TRUE, chimp_subtree_length, residual_chimp = residual, category_chimp = conservation)
+  dplyr::transmute(regulator, chimp_monophyleticity = TRUE, chimp_subtree_length, residual_chimp = residual, studentized_residual_chimp = studentized_residual, fdr_chimp = fdr, category_chimp = category, robust_chimp = robust)
 
 # network conservation - gorilla lineage
 module_conservation_gorilla_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/module_conservation_gorilla.rds")) %>% 
-  dplyr::transmute(regulator, gorilla_monophyleticity = TRUE, gorilla_subtree_length, residual_gorilla = residual, category_gorilla = conservation)
+  dplyr::transmute(regulator, gorilla_monophyleticity = TRUE, gorilla_subtree_length, residual_gorilla = residual, studentized_residual_gorilla = studentized_residual, fdr_gorilla = fdr, category_gorilla = category, robust_gorilla = robust)
 
 # network conservation - rhesus lineage
 module_conservation_rhesus_brain_data <- readRDS(here("data/brain_dataset/CroCoNet_analysis/module_conservation_rhesus.rds")) %>% 
-  dplyr::transmute(regulator, rhesus_monophyleticity = TRUE, rhesus_subtree_length, residual_rhesus = residual, category_rhesus = conservation)
+  dplyr::transmute(regulator, rhesus_monophyleticity = TRUE, rhesus_subtree_length, residual_rhesus = residual, studentized_residual_rhesus = studentized_residual, fdr_rhesus = fdr, category_rhesus = category, robust_rhesus = robust)
 
 # combine
 module_properties_brain_data <- data.frame(regulator = regulators_brain_data) %>% 
@@ -286,7 +286,7 @@ saveRDS(target_contributions_diff_data, here(wd, "suppl.table7_target_contributi
 
 # Supplementary table 8: POU5F1 gRNAs ------------------------------------------------------------
 
-seu <- readRDS(here("data/validations/POU5F1_Perturb_seq_processed_data/seu.rds"))
+seu <- readRDS(here("data/validations/POU5F1_CRISPRi_processed_data/seu.rds"))
 
 POU5F1_gRNAs <- seu@meta.data  %>% 
   dplyr::filter(perturbed_TF == "POU5F1") %>% 
@@ -318,7 +318,7 @@ saveRDS(control_gRNAs, here(wd, "suppl.table9_control_gRNAs.rds"))
 
 # Supplementary table 10: POU5F1 perturbation outcome --------------------------------------------
 
-de_dr_results <- readRDS(here("data/validations/POU5F1_Perturb_seq_DE_analysis/de_results.rds")) %>% 
+de_dr_results <- readRDS(here("data/validations/POU5F1_CRISPRi_DE_analysis/de_results.rds")) %>% 
   dplyr::mutate(contrast = case_when(contrast == "human" ~ "DE_human",
                                      contrast == "cynomolgus" ~ "DE_cynomolgus",
                                      contrast == "interaction" ~ "DR"),
@@ -336,11 +336,11 @@ col_df_table1 <- matrix(data = c(gsub("_iPSC|_NPC", "", colnames(experiments_and
                         nrow = 2, byrow = TRUE) %>% 
   as.data.frame()
 
-col_df_table5 <- matrix(data = c("regulator", rep("sequence_properties", 3), rep("expression_properties", 6), rep("binding_site_properties", 5), rep("network_properties", 3), rep("module_conservation_overall", 4), rep("module_conservation_human_lineage", 5), rep("module_conservation_gorilla_lineage", 5), colnames(module_properties_diff_data)[1:17], gsub("_overall|_human|_gorilla|_cynomolgus", "", colnames(module_properties_diff_data)[18:32])),
+col_df_table5 <- matrix(data = c("regulator", rep("sequence_properties", 3), rep("expression_properties", 6), rep("binding_site_properties", 5), rep("network_properties", 3), rep("module_conservation_overall", 7), rep("module_conservation_human_lineage", 8), rep("module_conservation_gorilla_lineage", 8), colnames(module_properties_diff_data)[1:17], gsub("_overall|_human|_gorilla|_cynomolgus", "", colnames(module_properties_diff_data)[18:41])),
                  nrow = 2, byrow = TRUE) %>% 
   as.data.frame()
 
-col_df_table6 <- matrix(data = c("regulator", "mean_expression", rep("network_properties", 3), rep("module_conservation_overall", 4), rep("module_conservation_human_lineage", 5), rep("module_conservation_chimp_lineage", 5), rep("module_conservation_gorilla_lineage", 5), rep("module_conservation_rhesus_lineage", 5), gsub("_overall|_human|_chimp|_gorilla|_rhesus|_marmoset", "", colnames(module_properties_brain_data))),
+col_df_table6 <- matrix(data = c("regulator", "mean_expression", rep("network_properties", 3), rep("module_conservation_overall", 7), rep("module_conservation_human_lineage", 8), rep("module_conservation_chimp_lineage", 8), rep("module_conservation_gorilla_lineage", 8), rep("module_conservation_rhesus_lineage", 8), gsub("_overall|_human|_chimp|_gorilla|_rhesus|_marmoset", "", colnames(module_properties_brain_data))),
                  nrow = 2, byrow = TRUE) %>% 
   as.data.frame()
 

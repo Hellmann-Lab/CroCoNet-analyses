@@ -46,10 +46,35 @@ ltr7_near_pou5f1_module_members <- ltr7_near_all_genes %>%
                distinct(gene_name)) %>% 
   dplyr::mutate(ltr7_type = replace_na(ltr7_type, "no_ltr7")) %>% 
   dplyr::mutate(pou5f1_module_member = gene_name %in% pou5f1_module_members)
+
+# get genes expressed in iPSCs
+expr <- readRDS(here("data/validations/TSS/expression_summary_scRNAseq.rds")) %>% 
+  dplyr::mutate(is_expr = mean_expr > 0.1 & perc_expr > 10)
+
+expr_genes <- expr %>% 
+  dplyr::filter(stage == "iPSC" & is_expr) %>% 
+  pull(gene) %>%
+  unique() %>% 
+  sort()
+length(expr_genes)
+
+# mark genes expressed in iPSCs
+ltr7_near_pou5f1_module_members <- ltr7_near_pou5f1_module_members %>% 
+  dplyr::mutate(expr_in_iPSCs = gene_name %in% expr_genes)
 saveRDS(ltr7_near_pou5f1_module_members, here(wd, "LTR7_near_POU5F1_module_members.rds"))
 
-# plot the fraction of genes with nearby LTR7 element(s) in the POU5F1 module and across the rest of the genes
-ltr7_near_pou5f1_module_members %>% 
+# filter
+ltr7_near_pou5f1_module_members_iPSC <- ltr7_near_pou5f1_module_members %>% 
+  dplyr::filter(expr_in_iPSCs)
+table(ltr7_near_pou5f1_module_members$pou5f1_module_member)
+table(ltr7_near_pou5f1_module_members_iPSC$pou5f1_module_member)
+table(ltr7_near_pou5f1_module_members$ltr7_type)
+table(ltr7_near_pou5f1_module_members_iPSC$ltr7_type)
+1 - sum(ltr7_near_pou5f1_module_members$ltr7_type == "no_ltr7") / nrow(ltr7_near_pou5f1_module_members)
+1 - sum(ltr7_near_pou5f1_module_members_iPSC$ltr7_type == "no_ltr7") / nrow(ltr7_near_pou5f1_module_members_iPSC)
+
+# plot the fraction of genes with nearby LTR7 element(s) in the POU5F1 module and across the rest of the pluripotency genes
+ltr7_near_pou5f1_module_members_iPSC %>% 
   group_by(pou5f1_module_member) %>% 
   dplyr::count(ltr7_type) %>% 
   dplyr::mutate(frac = n / sum(n)) %>% 
@@ -68,13 +93,13 @@ ltr7_near_pou5f1_module_members %>%
         legend.text = element_text(size = 11.5, lineheight = 0.7, margin = margin(t = 0.8, b = 0.8)),
         legend.key.height = unit(1, 'cm')) +
   scale_x_discrete(limits = c(TRUE, FALSE), breaks = c(TRUE, FALSE), labels = c("POU5F1 module", "other"))
-ggsave(here(fig_dir, "ltr7_near_pou5f1_module_members.png"), width = 7, height = 4.5)
+ggsave(here(fig_dir, "ltr7_near_pou5f1_module_members_iPSC_only.png"), width = 7, height = 4.5)
 
-# test enrichment of LTR7 elements
-ltr7_near_pou5f1_module_members <- ltr7_near_pou5f1_module_members %>% 
+# test enrichment of LTR7 elements (among pluripotency genes only)
+ltr7_near_pou5f1_module_members_iPSC <- ltr7_near_pou5f1_module_members_iPSC %>% 
   dplyr::mutate(pou5f1_module_member = factor(ifelse(pou5f1_module_member, "yes", "no"), c("yes", "no")))
 
-df1 <- ltr7_near_pou5f1_module_members %>% 
+df1 <- ltr7_near_pou5f1_module_members_iPSC %>% 
   dplyr::mutate(ltr7 = ifelse(ltr7_type == "no_ltr7", "no", "yes")) %>% 
   group_by(pou5f1_module_member) %>% 
   dplyr::count(ltr7)
@@ -88,8 +113,8 @@ table1 <- df1 %>%
 fisher_test_result <- fisher.test(table1)
 fisher_test_result
 
-# test enrichment of POU5F1-bound LTR7 elements
-df2 <- ltr7_near_pou5f1_module_members %>% 
+# test enrichment of POU5F1-bound LTR7 elements (among pluripotency genes only)
+df2 <- ltr7_near_pou5f1_module_members_iPSC %>% 
   dplyr::mutate(ltr7 = ifelse(ltr7_type %in% c("no_ltr7", "ltr7_no_pou5f1"), "no", "yes")) %>% 
   group_by(pou5f1_module_member) %>% 
   dplyr::count(ltr7)
@@ -103,8 +128,8 @@ table2 <- df2 %>%
 fisher_test_result <- fisher.test(table2)
 fisher_test_result
 
-# test enrichment of POU5F1-bound LTR7 elements without a cynomolgus ortholog
-df3 <- ltr7_near_pou5f1_module_members %>% 
+# test enrichment of POU5F1-bound LTR7 elements without a cynomolgus ortholog (among pluripotency genes only)
+df3 <- ltr7_near_pou5f1_module_members_iPSC %>% 
   dplyr::mutate(ltr7 = ifelse(ltr7_type %in% c("no_ltr7", "ltr7_no_pou5f1", "ltr7_pou5f1_cyno_ortholog"), "no", "yes")) %>% 
   group_by(pou5f1_module_member) %>% 
   dplyr::count(ltr7)
@@ -117,3 +142,5 @@ table3 <- df3 %>%
 
 fisher_test_result <- fisher.test(table3)
 fisher_test_result
+
+
