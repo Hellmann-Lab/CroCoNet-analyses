@@ -1,4 +1,4 @@
-here::i_am("scripts/4.paper_figures_and_tables/suppl.figureS12-S13.R")
+here::i_am("scripts/4.paper_figures_and_tables/suppl.figureS12_S13.R")
 
 library(tidyverse)
 library(plyranges)

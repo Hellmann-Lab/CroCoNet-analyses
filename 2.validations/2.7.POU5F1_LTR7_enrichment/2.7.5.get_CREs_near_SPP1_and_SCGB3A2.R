@@ -1,4 +1,4 @@
-here::i_am("scripts/2.validations/2.7.POU5F1_LTR7_enrichment/2.7.5.get_regions_near_SPP1_and_SCGB3A2.R")
+here::i_am("scripts/2.validations/2.7.POU5F1_LTR7_enrichment/2.7.5.get_CREs_near_SPP1_and_SCGB3A2.R")
 
 library(BSgenome.Hsapiens.UCSC.hg38)
 library(BSgenome.Ggorilla.UCSC.gorGor6)

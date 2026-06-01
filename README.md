@@ -8,7 +8,7 @@ following manuscript:
 
 by Anita Térmeg, Vladyslav Storozhuk, Zane Kliesmete, Fiona C.
 Edenhofer, Johanna Geuder, Tamina Dietl, Beate Vieth, Philipp Janssen,
-Boyan Bonev, Ines Hellmann
+Daniel Richter, Boyan Bonev, Ines Hellmann
 
 # <img src="pipeline.png" align="center" width="1000" />
 
@@ -23,10 +23,10 @@ following public repositories:
 | Accession | Dataset | Publication |
 |----|----|----|
 | [E-MTAB-15695 \| ArrayExpress](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15695) | neural differentiation scRNA-seq data | this paper |
-| [E-MTAB-13373 \| ArrayExpress](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-13373) & [E-MTAB-15654 \| ArrayExpress](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15654) | ATAC-seq data | [Kliesmete et al. 2024](https://doi.org/10.1101/gr.279001.124) & this paper |
+| [E-MTAB-13373 \| ArrayExpress](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-13373) &<br>[E-MTAB-15654 \| ArrayExpress](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MTAB-15654) | ATAC-seq data | [Kliesmete et al. 2024](https://doi.org/10.1101/gr.279001.124) & this paper |
 | [GSE326106 \| GEO](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE326106) | long-read RNA-seq data | this paper |
 | [GSE325993 \| GEO](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE325993) | single-cell CRISPRi data profiling the effects of the *POU5F1* perturbation | this paper |
-| [Great Ape MTG Analysis \| NeMO Archive](https://data.nemoarchive.org/publication_release/Great_Ape_MTG_Analysis/) | primate brain snRNA-seq dataset | [Jorstad et al. 2023](https://doi.org/10.1126/science.ade9516) |
+| <a href="https://data.nemoarchive.org/publication_release/Great_Ape_MTG_Analysis/">Great Ape MTG Analysis \|<br>NeMO Archive</a> | primate brain snRNA-seq dataset | [Jorstad et al. 2023](https://doi.org/10.1126/science.ade9516) |
 | [GSE69646 \| GEO](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE69646) | POU5F1 ChIP-seq data | [Ji et al. 2016](https://doi.org/10.1016/j.stem.2015.11.007) |
 | [GSE99627 \| GEO](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE99627) | NANOG ChIP-seq data | [Barakat et al. 2018](https://doi.org/10.1016/j.stem.2018.06.014) |
 | [CRA002482 \| GSA](https://ngdc.cncb.ac.cn/gsa/browse/CRA002482) | PAX6 ChIP-seq data | [Xu et al. 2021](https://doi.org/10.1093/nar/gkab030) |

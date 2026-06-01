@@ -1,4 +1,4 @@
-here::i_am("scripts/2.validations/2.7.POU5F1_LTR7_enrichment/2.7.1.get_LTR7_positions_and_info.R")
+here::i_am("scripts/2.validations/2.7.POU5F1_LTR7_enrichment/2.7.2.get_LTR7_positions_and_info.R")
 
 library(plyranges)
 library(tidyverse)
