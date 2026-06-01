@@ -320,7 +320,7 @@ and tables featuring in the manuscript.
   <li><a href="4.paper_figures_and_tables/suppl.figureS9.R">Supplementary Figure S9</a></li>
   <li><a href="4.paper_figures_and_tables/suppl.figureS10.R">Supplementary Figure S10</a></li>
   <li><a href="4.paper_figures_and_tables/suppl.figureS11.R">Supplementary Figure S11</a></li>
-  <li><a href="4.paper_figures_and_tables/suppl.figureS12_13.R">Supplementary Figure S12–S13</a></li>
+  <li><a href="4.paper_figures_and_tables/suppl.figureS12_S13.R">Supplementary Figure S12–S13</a></li>
   <li><a href="4.paper_figures_and_tables/suppl.figureS14.R">Supplementary Figure S14</a></li>
 </ul>
 &#10;</details>
