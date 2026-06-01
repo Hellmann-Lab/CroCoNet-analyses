@@ -19,7 +19,7 @@ tss <- readRDS(here("data/validations/ATAC_seq_peak_to_gene_associations/tss.rds
   as_granges()
 
 # human LTR7 elements
-ltr7 <- readRDS(here(wd, "LTR7_hg38.rds"))
+ltr7 <- readRDS(here(wd, "LTR7_list.rds"))[["human"]]
 
 # find LTR7 elements within 100kb of each TSS
 ltr7_near_all_genes <- join_overlap_intersect(tss %>% 
@@ -27,7 +27,7 @@ ltr7_near_all_genes <- join_overlap_intersect(tss %>%
                                                 stretch(200000),
                                               ltr7) %>% 
   as_tibble() %>% 
-  distinct(gene_name, ltr7_id, Ortholog.Gorilla, Ortholog.Rhesus, TFBS.all.POU5F1) 
+  distinct(gene_name, ID, Ortholog.Gorilla, Ortholog.Rhesus, TFBS.all.POU5F1) 
 
 # POU5F1 module members
 pou5f1_module_members <- readRDS(here("data/neural_differentiation_dataset/CroCoNet_analysis/pruned_modules.rds")) %>% 

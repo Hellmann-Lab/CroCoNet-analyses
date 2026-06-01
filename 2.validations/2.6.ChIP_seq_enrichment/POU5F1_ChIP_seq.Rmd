@@ -34,8 +34,8 @@ done
 
 ```{sh rename}
 cat > rename_map.txt <<'EOF'
-SRR2056023	POU5F1_ChIP_H1_hESCS_repl1
-SRR2056024	POU5F1_ChIP_H1_hESCS_repl2
+SRR2056023	POU5F1_ChIP_H1_hESCs_repl1
+SRR2056024	POU5F1_ChIP_H1_hESCs_repl2
 SRR2056020	input_H1_hESCs
 EOF
 
@@ -121,15 +121,45 @@ for fq in $wd/trimmed_fastq/*.fastq.gz; do
         $fq \
       | samtools view -@ 4 -bS - \
       | samtools sort -@ 4 \
-          -o $wd/mapping/${sample}.sorted.bam
+          -o $wd/mapping/${sample}_sorted.bam
       
       # name-sort
       samtools sort \
         -n -@ 4 \
         -o $wd/mapping/${sample}_nameSorted.bam \
-        $wd/mapping/${sample}.sorted.bam
+        $wd/mapping/${sample}_coordSorted.bam
     "
 done
+```
+
+
+# Coverage
+
+```{sh get_coverage}
+# merge the BAMs of the 2 replicates
+sbatch -c 15--job-name=merge --wrap="samtools merge -@ 15 $wd/POU5F1_ChIP_H1_hESCs.bam $wd/mapping/POU5F1_ChIP_H1_hESCs_repl1_coordSorted.bam $wd/mapping/POU5F1_ChIP_H1_hESCs_repl2_coordSorted.bam"
+
+# change chromosome style to NCBI
+sbatch --wrap="samtools view -H $wd/POU5F1_ChIP_H1_hESCs.bam |\
+   sed -e 's/SN:chr1/SN:1/' | sed -e 's/SN:chr2/SN:2/' | \
+   sed -e 's/SN:chr3/SN:3/' | sed -e 's/SN:chr4/SN:4/' | \
+   sed -e 's/SN:chr5/SN:5/' | sed -e 's/SN:chr6/SN:6/' | \
+   sed -e 's/SN:chr7/SN:7/' | sed -e 's/SN:chr8/SN:8/' | \
+   sed -e 's/SN:chr9/SN:9/' | sed -e 's/SN:chr10/SN:10/' | \
+   sed -e 's/SN:chr11/SN:11/' | sed -e 's/SN:chr12/SN:12/' | \
+   sed -e 's/SN:chr13/SN:13/' | sed -e 's/SN:chr14/SN:14/' | \
+   sed -e 's/SN:chr15/SN:15/' | sed -e 's/SN:chr16/SN:16/' | \
+   sed -e 's/SN:chr17/SN:17/' | sed -e 's/SN:chr18/SN:18/' | \
+   sed -e 's/SN:chr19/SN:19/' | sed -e 's/SN:chr20/SN:20/' | \
+   sed -e 's/SN:chr21/SN:21/' | sed -e 's/SN:chr22/SN:22/' | \
+   sed -e 's/SN:chrX/SN:X/' | sed -e 's/SN:chrY/SN:Y/' | \
+   sed -e 's/SN:chrM/SN:chrMT/' | samtools reheader - $wd/POU5F1_ChIP_H1_hESCs.bam > $wd/POU5F1_ChIP_H1_hESCs_NCBI.bam"
+
+# sort and index
+sbatch --wrap="samtools index $wd/POU5F1_ChIP_H1_hESCs_NCBI.bam"
+
+# get bigWig
+sbatch --wrap="bamCoverage -b $wd/POU5F1_ChIP_H1_hESCs_NCBI.bam -o $wd/POU5F1_ChIP_H1_hESCs.bw"
 ```
 
 
@@ -153,7 +183,7 @@ sbatch \
   --mem=16G \
   --wrap="
     $genrich \
-      -t $wd/mapping/POU5F1_ChIP_H1_hESCS_repl1_nameSorted.bam,$wd/mapping/POU5F1_ChIP_H1_hESCS_repl2_nameSorted.bam \
+      -t $wd/mapping/POU5F1_ChIP_H1_hESCs_repl1_nameSorted.bam,$wd/mapping/POU5F1_ChIP_H1_hESCs_repl2_nameSorted.bam \
       -c $wd/mapping/input_H1_hESCs_nameSorted.bam \
       -o $wd/peaks/POU5F1_ChIP_H1_hESCs_peaks_BL.narrowPeak \
       -E $wd/peaks/ENCFF356LFX.bed \
@@ -183,7 +213,7 @@ sbatch \
     echo -e \"replicate\tmapped_reads\treads_in_peaks\tFRiP\" > \$outfile
 
     for repl in repl1 repl2; do
-      bam=$wd/mapping/POU5F1_ChIP_H1_hESCS_\${repl}.sorted.bam
+      bam=$wd/mapping/POU5F1_ChIP_H1_hESCs_\${repl}_sorted.bam
 
       mapped=\$(samtools view -c -F 4 \$bam)
       inpeaks=\$(bedtools intersect -u -abam \$bam -b \$peaks | samtools view -c)
